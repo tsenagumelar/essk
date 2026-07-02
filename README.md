@@ -36,8 +36,8 @@ Local URLs:
 
 - Web through Nginx: `http://localhost`
 - Web direct: `http://localhost:3000`
-- Backend direct: `http://localhost:8080`
-- Backend health: `http://localhost:8080/health`
+- Backend direct: `http://localhost:18080`
+- Backend health: `http://localhost:18080/health`
 
 Default local admin:
 

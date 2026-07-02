@@ -40,9 +40,9 @@ Recommended local ports:
 
 - Web: `3000`.
 - Admin: `3001`.
-- Backend: `8080`.
-- PostgreSQL: `5432`.
-- Redis: `6379`.
+- Backend host port: `18080`.
+- PostgreSQL host port: `15432`.
+- Redis host port: `16379`.
 - Nginx: `80`.
 
 ## Backend Dockerfile

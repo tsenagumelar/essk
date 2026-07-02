@@ -76,7 +76,7 @@ type LoggingConfig struct {
 
 func Load() Config {
 	postgresHost := getEnv("POSTGRES_HOST", "localhost")
-	postgresPort := getEnv("POSTGRES_PORT", "5432")
+	postgresPort := getEnv("POSTGRES_PORT", "15432")
 	postgresDB := getEnv("POSTGRES_DB", "essk")
 	postgresUser := getEnv("POSTGRES_USER", "essk")
 	postgresPassword := getEnv("POSTGRES_PASSWORD", "essk")
@@ -88,7 +88,7 @@ func Load() Config {
 			Version: getEnv("ESSK_APP_VERSION", "0.1.0"),
 		},
 		HTTP: HTTPConfig{
-			Port:         getEnvInt("ESSK_BACKEND_PORT", 8080),
+			Port:         getEnvInt("ESSK_BACKEND_PORT", 18080),
 			ReadTimeout:  getEnvDuration("ESSK_HTTP_READ_TIMEOUT", 10*time.Second),
 			WriteTimeout: getEnvDuration("ESSK_HTTP_WRITE_TIMEOUT", 10*time.Second),
 			BodyLimit:    getEnvInt("ESSK_HTTP_BODY_LIMIT", 4*1024*1024),
@@ -100,7 +100,7 @@ func Load() Config {
 			),
 		},
 		Redis: RedisConfig{
-			Address:  fmt.Sprintf("%s:%s", getEnv("REDIS_HOST", "localhost"), getEnv("REDIS_PORT", "6379")),
+			Address:  fmt.Sprintf("%s:%s", getEnv("REDIS_HOST", "localhost"), getEnv("REDIS_PORT", "16379")),
 			Password: getEnv("REDIS_PASSWORD", ""),
 			DB:       getEnvInt("REDIS_DB", 0),
 		},

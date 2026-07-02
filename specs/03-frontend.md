@@ -229,7 +229,7 @@ Required:
 
 ```text
 NEXT_PUBLIC_APP_NAME=ESSK
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8080/api/v1
+NEXT_PUBLIC_API_BASE_URL=http://localhost:18080/api/v1
 ```
 
 Do not expose secrets through `NEXT_PUBLIC_*`.
