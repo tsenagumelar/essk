@@ -1,0 +1,16 @@
+{
+  "name": "essk",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.0.0",
+  "scripts": {
+    "dev": "docker compose -f infra/compose/docker-compose.yml up",
+    "dev:build": "docker compose -f infra/compose/docker-compose.yml up --build",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "build": "pnpm -r build",
+    "codegen": "pnpm --filter @essk/sdk-ts codegen",
+    "policy:check": "go -C services/backend run ./cmd/essk policy check --all"
+  }
+}

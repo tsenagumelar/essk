@@ -1,0 +1,38 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: check-json
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+
+  - repo: local
+    hooks:
+      - id: essk-policy-check
+        name: ESSK policy check
+        entry: go -C services/backend run ./cmd/essk policy check --staged
+        language: system
+        pass_filenames: false
+
+      - id: backend-gofmt
+        name: Backend gofmt
+        entry: gofmt -w
+        language: system
+        files: ^services/backend/.*\.go$
+
+      - id: backend-test
+        name: Backend tests
+        entry: bash -c "cd services/backend && go test ./..."
+        language: system
+        pass_filenames: false
+        files: ^services/backend/.*\.go$
+
+      - id: web-typecheck
+        name: Web typecheck
+        entry: pnpm --filter @essk/web typecheck
+        language: system
+        pass_filenames: false
+        files: ^apps/web/.*\.(ts|tsx|json)$
