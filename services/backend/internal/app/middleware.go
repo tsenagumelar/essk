@@ -14,7 +14,7 @@ func (a *App) requestLogger() fiber.Handler {
 
 		a.log.Info().
 			Str("request_id", c.GetRespHeader(fiber.HeaderXRequestID)).
-			Str("correlation_id", c.Get("X-Correlation-ID")).
+			Str("correlation_id", c.GetRespHeader(correlationIDHeader)).
 			Str("method", c.Method()).
 			Str("path", c.Path()).
 			Int("status", c.Response().StatusCode()).

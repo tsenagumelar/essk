@@ -73,6 +73,38 @@ func TestRequirePermissionRejectsForbiddenUser(t *testing.T) {
 	}
 }
 
+func TestRequireAuthRejectsMissingToken(t *testing.T) {
+	app := fiber.New()
+	app.Get("/protected", RequireAuth(testTokenService()), func(c *fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusNoContent)
+	})
+
+	resp, err := app.Test(httptest.NewRequest(fiber.MethodGet, "/protected", nil))
+	if err != nil {
+		t.Fatalf("app test: %v", err)
+	}
+	if resp.StatusCode != fiber.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d", resp.StatusCode)
+	}
+}
+
+func TestRequireAuthRejectsMalformedBearerToken(t *testing.T) {
+	app := fiber.New()
+	app.Get("/protected", RequireAuth(testTokenService()), func(c *fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusNoContent)
+	})
+
+	req := httptest.NewRequest(fiber.MethodGet, "/protected", nil)
+	req.Header.Set(fiber.HeaderAuthorization, "Basic invalid")
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("app test: %v", err)
+	}
+	if resp.StatusCode != fiber.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d", resp.StatusCode)
+	}
+}
+
 func testTokenService() authn.TokenService {
 	return authn.NewTokenService(config.AuthConfig{
 		Issuer:         "essk-test",

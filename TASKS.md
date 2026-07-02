@@ -87,9 +87,9 @@ Status legend:
 
 - `[x]` Add audit log module.
 - `[x]` Add Redis-backed rate limiter.
-- `[ ]` Add OWASP-sensitive tests.
-- `[ ]` Add security headers.
-- `[ ]` Add observability hooks.
+- `[x]` Add OWASP-sensitive tests.
+- `[x]` Add security headers.
+- `[x]` Add observability hooks.
 
 ## Milestone 5 - Module Scaffolding
 

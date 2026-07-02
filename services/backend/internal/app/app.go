@@ -93,6 +93,7 @@ func (a *App) Shutdown(ctx context.Context) error {
 func (a *App) registerMiddleware() {
 	a.server.Use(recover.New())
 	a.server.Use(requestid.New())
+	a.server.Use(correlationID())
 	a.server.Use(a.requestLogger())
 	a.server.Use(cors.New(cors.Config{
 		AllowOrigins: a.cfg.CORS.AllowedOrigins,
