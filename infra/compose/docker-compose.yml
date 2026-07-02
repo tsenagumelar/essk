@@ -96,7 +96,7 @@ services:
       seed:
         condition: service_completed_successfully
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:18080/health"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:18080/health"]
       interval: 10s
       timeout: 5s
       retries: 5
