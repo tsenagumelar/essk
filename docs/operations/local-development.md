@@ -23,7 +23,16 @@ pnpm --filter @essk/web dev
 ## Docker Compose
 
 ```text
-docker compose -f infra/compose/docker-compose.yml up --build
+pnpm dev:up
+```
+
+This command runs PostgreSQL, Redis, migrations, admin seed, backend, web, and Nginx.
+
+Default admin:
+
+```text
+admin@essk.local
+Admin123!
 ```
 
 ## Policy Check

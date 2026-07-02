@@ -25,6 +25,45 @@ services:
       timeout: 5s
       retries: 5
 
+  migrate:
+    build:
+      context: ../..
+      dockerfile: infra/docker/backend.Dockerfile
+    command: ["essk", "migrate", "up"]
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: essk
+      POSTGRES_USER: essk
+      POSTGRES_PASSWORD: essk
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  seed:
+    build:
+      context: ../..
+      dockerfile: infra/docker/backend.Dockerfile
+    command: ["essk", "seed", "admin"]
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: essk
+      POSTGRES_USER: essk
+      POSTGRES_PASSWORD: essk
+      JWT_ISSUER: essk
+      JWT_SIGNING_KEY: change-me-local-only
+      SEED_ADMIN_EMAIL: admin@essk.local
+      SEED_ADMIN_NAME: ESSK Admin
+      SEED_ADMIN_PASSWORD: Admin123!
+      SEED_TENANT_NAME: System Tenant
+      SEED_TENANT_SLUG: system
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+
   backend:
     build:
       context: ../..
@@ -52,10 +91,10 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
+      seed:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
       interval: 10s

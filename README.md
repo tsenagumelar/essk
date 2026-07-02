@@ -6,12 +6,62 @@ The implementation follows the technical specifications in [`specs/`](specs/) an
 
 ## Current Focus
 
-Milestone 1: foundation bootstrap.
+Milestone 4: hardening and module scaffolding preparation.
 
-## Planned Local Startup
+## One-Command Local Startup
+
+Use either command:
 
 ```text
-docker compose -f infra/compose/docker-compose.yml up --build
+pnpm dev:up
+```
+
+or:
+
+```text
+make dev
+```
+
+This starts:
+
+- PostgreSQL.
+- Redis.
+- Database migrations.
+- Admin seed.
+- Backend API.
+- Web app.
+- Nginx reverse proxy.
+
+Local URLs:
+
+- Web through Nginx: `http://localhost`
+- Web direct: `http://localhost:3000`
+- Backend direct: `http://localhost:8080`
+- Backend health: `http://localhost:8080/health`
+
+Default local admin:
+
+```text
+admin@essk.local
+Admin123!
+```
+
+Stop services:
+
+```text
+pnpm dev:down
+```
+
+Reset local database volume:
+
+```text
+pnpm dev:reset
+```
+
+## Verification
+
+```text
+make test
 ```
 
 ## Repository Layout

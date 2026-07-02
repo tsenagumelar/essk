@@ -4,8 +4,11 @@
   "private": true,
   "packageManager": "pnpm@10.0.0",
   "scripts": {
-    "dev": "docker compose -f infra/compose/docker-compose.yml up",
-    "dev:build": "docker compose -f infra/compose/docker-compose.yml up --build",
+    "dev": "pnpm dev:up",
+    "dev:up": "docker compose -f infra/compose/docker-compose.yml up --build",
+    "dev:down": "docker compose -f infra/compose/docker-compose.yml down",
+    "dev:logs": "docker compose -f infra/compose/docker-compose.yml logs -f",
+    "dev:reset": "docker compose -f infra/compose/docker-compose.yml down -v",
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
