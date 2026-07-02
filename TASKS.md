@@ -59,7 +59,7 @@ Status legend:
 - `[x]` Run backend tests.
 - `[x]` Run frontend typecheck/lint when dependencies are installed.
 - `[x]` Validate Docker Compose config.
-- `[ ]` Commit and push completed foundation slice.
+- `[x]` Commit and push completed foundation slice.
 
 ## Milestone 2 - Auth Core
 
