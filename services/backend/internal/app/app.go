@@ -19,6 +19,7 @@ import (
 	"github.com/tsenagumelar/essk/services/backend/internal/config"
 	"github.com/tsenagumelar/essk/services/backend/internal/database"
 	apperrors "github.com/tsenagumelar/essk/services/backend/internal/errors"
+	"github.com/tsenagumelar/essk/services/backend/internal/middleware"
 	"github.com/tsenagumelar/essk/services/backend/internal/modules/audit"
 	authmodule "github.com/tsenagumelar/essk/services/backend/internal/modules/auth"
 	"github.com/tsenagumelar/essk/services/backend/internal/modules/rbac"
@@ -111,6 +112,16 @@ func (a *App) registerRoutes() {
 	api.Get("/ready", a.ready)
 	api.Get("/version", a.version)
 
+	rateLimitStore := middleware.NewRedisRateLimitStore(a.redis)
+	api.Use(middleware.RateLimit(middleware.RateLimitConfig{
+		Enabled: a.cfg.RateLimit.Enabled,
+		Prefix:  "global",
+		Limit:   a.cfg.RateLimit.GlobalRPM,
+		Window:  a.cfg.RateLimit.Window,
+		Store:   rateLimitStore,
+		KeyFunc: middleware.IPKey,
+	}))
+
 	if a.db != nil {
 		tokenService := authn.NewTokenService(a.cfg.Auth)
 		rbacRepo := rbac.NewRepository(a.db)
@@ -120,7 +131,24 @@ func (a *App) registerRoutes() {
 		authRepo := authmodule.NewRepository(a.db)
 		authService := authmodule.NewService(a.cfg, authRepo, authmodule.NewPasswordHasher(), tokenService).WithAudit(auditService)
 		authHandler := authmodule.NewHandler(authService, appvalidator.New())
-		authmodule.RegisterRoutes(api, authHandler, tokenService)
+		authmodule.RegisterRoutes(api, authHandler, tokenService, authmodule.RateLimiters{
+			Login: middleware.RateLimit(middleware.RateLimitConfig{
+				Enabled: a.cfg.RateLimit.Enabled,
+				Prefix:  "auth_login",
+				Limit:   a.cfg.RateLimit.AuthLoginRPM,
+				Window:  a.cfg.RateLimit.Window,
+				Store:   rateLimitStore,
+				KeyFunc: middleware.LoginKey,
+			}),
+			Refresh: middleware.RateLimit(middleware.RateLimitConfig{
+				Enabled: a.cfg.RateLimit.Enabled,
+				Prefix:  "auth_refresh",
+				Limit:   a.cfg.RateLimit.AuthRefreshRPM,
+				Window:  a.cfg.RateLimit.Window,
+				Store:   rateLimitStore,
+				KeyFunc: middleware.UserOrIPKey,
+			}),
+		})
 
 		auditHandler := audit.NewHandler(auditService)
 		audit.RegisterRoutes(api, auditHandler, tokenService, rbacRepo)

@@ -8,14 +8,15 @@ import (
 )
 
 type Config struct {
-	App      AppConfig
-	HTTP     HTTPConfig
-	Database DatabaseConfig
-	Redis    RedisConfig
-	Auth     AuthConfig
-	Seed     SeedConfig
-	CORS     CORSConfig
-	Logging  LoggingConfig
+	App       AppConfig
+	HTTP      HTTPConfig
+	Database  DatabaseConfig
+	Redis     RedisConfig
+	Auth      AuthConfig
+	Seed      SeedConfig
+	CORS      CORSConfig
+	RateLimit RateLimitConfig
+	Logging   LoggingConfig
 }
 
 type AppConfig struct {
@@ -58,6 +59,14 @@ type SeedConfig struct {
 
 type CORSConfig struct {
 	AllowedOrigins string
+}
+
+type RateLimitConfig struct {
+	Enabled        bool
+	Window         time.Duration
+	GlobalRPM      int
+	AuthLoginRPM   int
+	AuthRefreshRPM int
 }
 
 type LoggingConfig struct {
@@ -110,6 +119,13 @@ func Load() Config {
 		},
 		CORS: CORSConfig{
 			AllowedOrigins: getEnv("ESSK_CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:3001"),
+		},
+		RateLimit: RateLimitConfig{
+			Enabled:        getEnvBool("RATE_LIMIT_ENABLED", true),
+			Window:         getEnvDuration("RATE_LIMIT_WINDOW", time.Minute),
+			GlobalRPM:      getEnvInt("RATE_LIMIT_GLOBAL_RPM", 300),
+			AuthLoginRPM:   getEnvInt("RATE_LIMIT_AUTH_LOGIN_RPM", 5),
+			AuthRefreshRPM: getEnvInt("RATE_LIMIT_AUTH_REFRESH_RPM", 20),
 		},
 		Logging: LoggingConfig{
 			Level:  getEnv("ESSK_LOG_LEVEL", "info"),
