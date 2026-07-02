@@ -22,6 +22,7 @@ import (
 	"github.com/tsenagumelar/essk/services/backend/internal/middleware"
 	"github.com/tsenagumelar/essk/services/backend/internal/modules/audit"
 	authmodule "github.com/tsenagumelar/essk/services/backend/internal/modules/auth"
+	"github.com/tsenagumelar/essk/services/backend/internal/modules/product"
 	"github.com/tsenagumelar/essk/services/backend/internal/modules/rbac"
 	tenantmodule "github.com/tsenagumelar/essk/services/backend/internal/modules/tenant"
 	"github.com/tsenagumelar/essk/services/backend/internal/response"
@@ -153,6 +154,11 @@ func (a *App) registerRoutes() {
 
 		auditHandler := audit.NewHandler(auditService)
 		audit.RegisterRoutes(api, auditHandler, tokenService, rbacRepo)
+
+		productRepo := product.NewRepository(a.db)
+		productService := product.NewService(productRepo).WithAudit(auditService)
+		productHandler := product.NewHandler(productService, appvalidator.New())
+		product.RegisterRoutes(api, productHandler, tokenService, rbacRepo)
 
 		rbacService := rbac.NewService(rbacRepo).WithAudit(auditService)
 		rbacHandler := rbac.NewHandler(rbacService, appvalidator.New())

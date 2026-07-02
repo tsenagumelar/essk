@@ -191,6 +191,10 @@ func (s Service) seedAdminRBAC(ctx context.Context, adminUserID uuid.UUID, tenan
 		{ID: uuid.New(), Code: "tenants:create", Name: "Create tenants"},
 		{ID: uuid.New(), Code: "tenants:update", Name: "Update tenants"},
 		{ID: uuid.New(), Code: "tenants:delete", Name: "Delete tenants"},
+		{ID: uuid.New(), Code: "products:read", Name: "Read products"},
+		{ID: uuid.New(), Code: "products:create", Name: "Create products"},
+		{ID: uuid.New(), Code: "products:update", Name: "Update products"},
+		{ID: uuid.New(), Code: "products:delete", Name: "Delete products"},
 		{ID: uuid.New(), Code: "audit_logs:read", Name: "Read audit logs"},
 	}
 

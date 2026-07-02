@@ -1,4 +1,5 @@
 import { env } from "@/lib/env";
+import { getAccessToken } from "@/features/auth/session";
 
 export type ApiEnvelope<T> = {
   success: boolean;
@@ -31,12 +32,25 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
   });
 }
 
+export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
+  return apiRequest<T>(path, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function apiDelete<T>(path: string): Promise<T> {
+  return apiRequest<T>(path, { method: "DELETE" });
+}
+
 async function apiRequest<T>(path: string, init: RequestInit): Promise<T> {
+  const accessToken = getAccessToken();
   const response = await fetch(`${env.apiBaseUrl}${path}`, {
     ...init,
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...init.headers,
     },
     cache: "no-store",

@@ -1,4 +1,4 @@
-import { apiPost } from "@/lib/api/client";
+import { apiGet, apiPost } from "@/lib/api/client";
 
 export type AuthUser = {
   id: string;
@@ -23,4 +23,8 @@ export type LoginPayload = {
 
 export function login(payload: LoginPayload) {
   return apiPost<AuthResponse>("/auth/login", payload);
+}
+
+export function getMe() {
+  return apiGet<AuthUser>("/auth/me");
 }

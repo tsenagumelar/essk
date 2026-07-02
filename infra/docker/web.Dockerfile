@@ -21,6 +21,7 @@ RUN corepack enable
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
+COPY --from=deps /root/.cache/node/corepack /root/.cache/node/corepack
 COPY . .
 RUN pnpm --filter @essk/web build
 
@@ -29,6 +30,8 @@ FROM node:24-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
+ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
 ENV NEXT_PUBLIC_APP_NAME=ESSK
 ENV NEXT_PUBLIC_API_BASE_URL=http://localhost:18080/api/v1
 

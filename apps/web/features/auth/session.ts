@@ -15,3 +15,25 @@ export function clearSession() {
   window.localStorage.removeItem(refreshTokenKey);
   window.localStorage.removeItem(userKey);
 }
+
+export function getAccessToken() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  return window.localStorage.getItem(accessTokenKey);
+}
+
+export function getStoredUser() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  const raw = window.localStorage.getItem(userKey);
+  if (!raw) {
+    return null;
+  }
+  try {
+    return JSON.parse(raw) as AuthResponse["user"];
+  } catch {
+    return null;
+  }
+}
