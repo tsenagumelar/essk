@@ -81,7 +81,7 @@ Status legend:
 - `[x]` Add user-role assignment.
 - `[x]` Add role-permission assignment.
 - `[x]` Add permission middleware.
-- `[ ]` Add tenant boundary tests.
+- `[x]` Add tenant boundary tests.
 
 ## Milestone 4 - Audit And Hardening
 

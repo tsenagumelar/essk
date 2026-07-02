@@ -12,6 +12,30 @@ import (
 
 var ErrNotFound = errors.New("not found")
 
+const userHasPermissionSQL = `
+	SELECT EXISTS (
+		SELECT 1
+		FROM users u
+		JOIN user_roles ur ON ur.user_id = u.id
+		JOIN roles ro ON ro.id = ur.role_id
+		JOIN role_permissions rp ON rp.role_id = ro.id
+		JOIN permissions pe ON pe.id = rp.permission_id
+		WHERE u.id = $1
+			AND pe.code = $2
+			AND u.is_active = true
+			AND u.is_deleted = false
+			AND ur.is_active = true
+			AND ur.is_deleted = false
+			AND ro.is_active = true
+			AND ro.is_deleted = false
+			AND (ro.tenant_id IS NULL OR ro.tenant_id = u.tenant_id)
+			AND rp.is_active = true
+			AND rp.is_deleted = false
+			AND pe.is_active = true
+			AND pe.is_deleted = false
+	)
+`
+
 type Repository struct {
 	db *pgxpool.Pool
 }
@@ -22,26 +46,18 @@ func NewRepository(db *pgxpool.Pool) Repository {
 
 func (r Repository) UserHasPermission(ctx context.Context, userID uuid.UUID, permissionCode string) (bool, error) {
 	var exists bool
-	err := r.db.QueryRow(ctx, `
-		SELECT EXISTS (
-			SELECT 1
-			FROM user_roles ur
-			JOIN roles ro ON ro.id = ur.role_id
-			JOIN role_permissions rp ON rp.role_id = ro.id
-			JOIN permissions pe ON pe.id = rp.permission_id
-			WHERE ur.user_id = $1
-				AND pe.code = $2
-				AND ur.is_active = true
-				AND ur.is_deleted = false
-				AND ro.is_active = true
-				AND ro.is_deleted = false
-				AND rp.is_active = true
-				AND rp.is_deleted = false
-				AND pe.is_active = true
-				AND pe.is_deleted = false
-		)
-	`, userID, permissionCode).Scan(&exists)
+	err := r.db.QueryRow(ctx, userHasPermissionSQL, userID, permissionCode).Scan(&exists)
 	return exists, err
+}
+
+func RoleAppliesToUserTenant(userTenantID *uuid.UUID, roleTenantID *uuid.UUID) bool {
+	if roleTenantID == nil {
+		return true
+	}
+	if userTenantID == nil {
+		return false
+	}
+	return *roleTenantID == *userTenantID
 }
 
 func (r Repository) ListPermissions(ctx context.Context) ([]Permission, error) {
