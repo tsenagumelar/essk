@@ -85,7 +85,7 @@ Status legend:
 
 ## Milestone 4 - Audit And Hardening
 
-- `[ ]` Add audit log module.
+- `[x]` Add audit log module.
 - `[ ]` Add Redis-backed rate limiter.
 - `[ ]` Add OWASP-sensitive tests.
 - `[ ]` Add security headers.

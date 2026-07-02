@@ -8,15 +8,22 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	apperrors "github.com/tsenagumelar/essk/services/backend/internal/errors"
+	"github.com/tsenagumelar/essk/services/backend/internal/modules/audit"
 )
 
 type Service struct {
-	repo Repository
-	now  func() time.Time
+	repo  Repository
+	audit *audit.Service
+	now   func() time.Time
 }
 
 func NewService(repo Repository) Service {
 	return Service{repo: repo, now: time.Now}
+}
+
+func (s Service) WithAudit(auditService audit.Service) Service {
+	s.audit = &auditService
+	return s
 }
 
 func (s Service) List(ctx context.Context) ([]TenantResponse, error) {
@@ -50,6 +57,7 @@ func (s Service) Create(ctx context.Context, req CreateTenantRequest, actorID uu
 	if err := s.repo.Create(ctx, tenant, actorID, s.now().UTC()); err != nil {
 		return TenantResponse{}, err
 	}
+	_ = s.writeAudit(ctx, actorID, "tenant.create", tenant.ID.String(), map[string]any{"slug": tenant.Slug})
 	return toResponse(tenant), nil
 }
 
@@ -64,11 +72,29 @@ func (s Service) Update(ctx context.Context, id uuid.UUID, req UpdateTenantReque
 	if err := s.repo.Update(ctx, tenant, actorID, s.now().UTC()); err != nil {
 		return TenantResponse{}, mapNotFound(err)
 	}
+	_ = s.writeAudit(ctx, actorID, "tenant.update", tenant.ID.String(), map[string]any{"status": tenant.Status})
 	return toResponse(tenant), nil
 }
 
 func (s Service) Delete(ctx context.Context, id uuid.UUID, actorID uuid.UUID) error {
-	return mapNotFound(s.repo.Delete(ctx, id, actorID, s.now().UTC()))
+	if err := mapNotFound(s.repo.Delete(ctx, id, actorID, s.now().UTC())); err != nil {
+		return err
+	}
+	_ = s.writeAudit(ctx, actorID, "tenant.delete", id.String(), nil)
+	return nil
+}
+
+func (s Service) writeAudit(ctx context.Context, actorID uuid.UUID, action string, resourceID string, metadata map[string]any) error {
+	if s.audit == nil {
+		return nil
+	}
+	return s.audit.Write(ctx, audit.Event{
+		ActorUserID:  &actorID,
+		Action:       action,
+		ResourceType: "tenant",
+		ResourceID:   &resourceID,
+		Metadata:     metadata,
+	})
 }
 
 func mapNotFound(err error) error {

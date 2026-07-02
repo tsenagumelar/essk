@@ -19,6 +19,7 @@ import (
 	"github.com/tsenagumelar/essk/services/backend/internal/config"
 	"github.com/tsenagumelar/essk/services/backend/internal/database"
 	apperrors "github.com/tsenagumelar/essk/services/backend/internal/errors"
+	"github.com/tsenagumelar/essk/services/backend/internal/modules/audit"
 	authmodule "github.com/tsenagumelar/essk/services/backend/internal/modules/auth"
 	"github.com/tsenagumelar/essk/services/backend/internal/modules/rbac"
 	tenantmodule "github.com/tsenagumelar/essk/services/backend/internal/modules/tenant"
@@ -112,18 +113,24 @@ func (a *App) registerRoutes() {
 
 	if a.db != nil {
 		tokenService := authn.NewTokenService(a.cfg.Auth)
+		rbacRepo := rbac.NewRepository(a.db)
+		auditRepo := audit.NewRepository(a.db)
+		auditService := audit.NewService(auditRepo)
+
 		authRepo := authmodule.NewRepository(a.db)
-		authService := authmodule.NewService(a.cfg, authRepo, authmodule.NewPasswordHasher(), tokenService)
+		authService := authmodule.NewService(a.cfg, authRepo, authmodule.NewPasswordHasher(), tokenService).WithAudit(auditService)
 		authHandler := authmodule.NewHandler(authService, appvalidator.New())
 		authmodule.RegisterRoutes(api, authHandler, tokenService)
 
-		rbacRepo := rbac.NewRepository(a.db)
-		rbacService := rbac.NewService(rbacRepo)
+		auditHandler := audit.NewHandler(auditService)
+		audit.RegisterRoutes(api, auditHandler, tokenService, rbacRepo)
+
+		rbacService := rbac.NewService(rbacRepo).WithAudit(auditService)
 		rbacHandler := rbac.NewHandler(rbacService, appvalidator.New())
 		rbac.RegisterRoutes(api, rbacHandler, tokenService, rbacRepo)
 
 		tenantRepo := tenantmodule.NewRepository(a.db)
-		tenantService := tenantmodule.NewService(tenantRepo)
+		tenantService := tenantmodule.NewService(tenantRepo).WithAudit(auditService)
 		tenantHandler := tenantmodule.NewHandler(tenantService, appvalidator.New())
 		tenantmodule.RegisterRoutes(api, tenantHandler, tokenService, rbacRepo)
 	}

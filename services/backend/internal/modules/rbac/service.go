@@ -8,15 +8,22 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	apperrors "github.com/tsenagumelar/essk/services/backend/internal/errors"
+	"github.com/tsenagumelar/essk/services/backend/internal/modules/audit"
 )
 
 type Service struct {
-	repo Repository
-	now  func() time.Time
+	repo  Repository
+	audit *audit.Service
+	now   func() time.Time
 }
 
 func NewService(repo Repository) Service {
 	return Service{repo: repo, now: time.Now}
+}
+
+func (s Service) WithAudit(auditService audit.Service) Service {
+	s.audit = &auditService
+	return s
 }
 
 func (s Service) ListPermissions(ctx context.Context) ([]PermissionResponse, error) {
@@ -76,6 +83,7 @@ func (s Service) CreateRole(ctx context.Context, req CreateRoleRequest, actorID 
 	if err := s.repo.CreateRole(ctx, role, actorID, s.now().UTC()); err != nil {
 		return RoleResponse{}, err
 	}
+	_ = s.writeAudit(ctx, actorID, "role.create", "role", role.ID.String(), map[string]any{"code": role.Code})
 	return toRoleResponse(role), nil
 }
 
@@ -92,11 +100,16 @@ func (s Service) UpdateRole(ctx context.Context, id uuid.UUID, req UpdateRoleReq
 	if err := s.repo.UpdateRole(ctx, role, actorID, s.now().UTC()); err != nil {
 		return RoleResponse{}, mapNotFound(err)
 	}
+	_ = s.writeAudit(ctx, actorID, "role.update", "role", role.ID.String(), map[string]any{"code": role.Code})
 	return toRoleResponse(role), nil
 }
 
 func (s Service) DeleteRole(ctx context.Context, id uuid.UUID, actorID uuid.UUID) error {
-	return mapNotFound(s.repo.DeleteRole(ctx, id, actorID, s.now().UTC()))
+	if err := mapNotFound(s.repo.DeleteRole(ctx, id, actorID, s.now().UTC())); err != nil {
+		return err
+	}
+	_ = s.writeAudit(ctx, actorID, "role.delete", "role", id.String(), nil)
+	return nil
 }
 
 func (s Service) AssignPermission(ctx context.Context, roleID uuid.UUID, req AssignPermissionRequest, actorID uuid.UUID) error {
@@ -104,11 +117,19 @@ func (s Service) AssignPermission(ctx context.Context, roleID uuid.UUID, req Ass
 	if err != nil {
 		return apperrors.New("VALIDATION_ERROR", fiber.StatusBadRequest, "Invalid permission_id")
 	}
-	return s.repo.AssignPermission(ctx, roleID, permissionID, actorID, s.now().UTC())
+	if err := s.repo.AssignPermission(ctx, roleID, permissionID, actorID, s.now().UTC()); err != nil {
+		return err
+	}
+	_ = s.writeAudit(ctx, actorID, "role.permission.assign", "role", roleID.String(), map[string]any{"permission_id": permissionID.String()})
+	return nil
 }
 
 func (s Service) RemovePermission(ctx context.Context, roleID uuid.UUID, permissionID uuid.UUID, actorID uuid.UUID) error {
-	return s.repo.RemovePermission(ctx, roleID, permissionID, actorID, s.now().UTC())
+	if err := s.repo.RemovePermission(ctx, roleID, permissionID, actorID, s.now().UTC()); err != nil {
+		return err
+	}
+	_ = s.writeAudit(ctx, actorID, "role.permission.remove", "role", roleID.String(), map[string]any{"permission_id": permissionID.String()})
+	return nil
 }
 
 func (s Service) AssignRoleToUser(ctx context.Context, userID uuid.UUID, req AssignRoleRequest, actorID uuid.UUID) error {
@@ -116,11 +137,32 @@ func (s Service) AssignRoleToUser(ctx context.Context, userID uuid.UUID, req Ass
 	if err != nil {
 		return apperrors.New("VALIDATION_ERROR", fiber.StatusBadRequest, "Invalid role_id")
 	}
-	return s.repo.AssignRoleToUser(ctx, userID, roleID, actorID, s.now().UTC())
+	if err := s.repo.AssignRoleToUser(ctx, userID, roleID, actorID, s.now().UTC()); err != nil {
+		return err
+	}
+	_ = s.writeAudit(ctx, actorID, "user.role.assign", "user", userID.String(), map[string]any{"role_id": roleID.String()})
+	return nil
 }
 
 func (s Service) RemoveRoleFromUser(ctx context.Context, userID uuid.UUID, roleID uuid.UUID, actorID uuid.UUID) error {
-	return s.repo.RemoveRoleFromUser(ctx, userID, roleID, actorID, s.now().UTC())
+	if err := s.repo.RemoveRoleFromUser(ctx, userID, roleID, actorID, s.now().UTC()); err != nil {
+		return err
+	}
+	_ = s.writeAudit(ctx, actorID, "user.role.remove", "user", userID.String(), map[string]any{"role_id": roleID.String()})
+	return nil
+}
+
+func (s Service) writeAudit(ctx context.Context, actorID uuid.UUID, action string, resourceType string, resourceID string, metadata map[string]any) error {
+	if s.audit == nil {
+		return nil
+	}
+	return s.audit.Write(ctx, audit.Event{
+		ActorUserID:  &actorID,
+		Action:       action,
+		ResourceType: resourceType,
+		ResourceID:   &resourceID,
+		Metadata:     metadata,
+	})
 }
 
 func mapNotFound(err error) error {

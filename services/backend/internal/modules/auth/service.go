@@ -10,6 +10,7 @@ import (
 	"github.com/tsenagumelar/essk/services/backend/internal/authn"
 	"github.com/tsenagumelar/essk/services/backend/internal/config"
 	apperrors "github.com/tsenagumelar/essk/services/backend/internal/errors"
+	"github.com/tsenagumelar/essk/services/backend/internal/modules/audit"
 	"github.com/tsenagumelar/essk/services/backend/internal/modules/rbac"
 )
 
@@ -17,6 +18,7 @@ type Service struct {
 	cfg      config.Config
 	repo     Repository
 	rbacRepo *rbac.Repository
+	audit    *audit.Service
 	hasher   PasswordHasher
 	tokenSvc authn.TokenService
 	now      func() time.Time
@@ -34,6 +36,11 @@ func NewService(cfg config.Config, repo Repository, hasher PasswordHasher, token
 
 func (s Service) WithRBAC(repo rbac.Repository) Service {
 	s.rbacRepo = &repo
+	return s
+}
+
+func (s Service) WithAudit(auditService audit.Service) Service {
+	s.audit = &auditService
 	return s
 }
 
@@ -56,6 +63,7 @@ func (s Service) Login(ctx context.Context, req LoginRequest) (AuthResponse, err
 	if err := s.repo.UpdateLastLogin(ctx, user.ID, now); err != nil {
 		return AuthResponse{}, err
 	}
+	_ = s.writeAudit(ctx, user, "auth.login", "user", user.ID.String(), nil)
 
 	return s.createAuthResponse(ctx, user, now)
 }
@@ -88,6 +96,7 @@ func (s Service) Refresh(ctx context.Context, req RefreshRequest) (AuthResponse,
 	if err := s.repo.RevokeRefreshToken(ctx, current.ID, user.ID, &newToken.ID, now); err != nil {
 		return AuthResponse{}, err
 	}
+	_ = s.writeAudit(ctx, user, "auth.refresh", "refresh_token", current.ID.String(), nil)
 
 	return response, nil
 }
@@ -99,7 +108,14 @@ func (s Service) Logout(ctx context.Context, req LogoutRequest, actorID uuid.UUI
 	}
 
 	now := s.now().UTC()
-	return s.repo.RevokeRefreshToken(ctx, token.ID, actorID, nil, now)
+	if err := s.repo.RevokeRefreshToken(ctx, token.ID, actorID, nil, now); err != nil {
+		return err
+	}
+	user, err := s.repo.FindUserByID(ctx, actorID)
+	if err == nil {
+		_ = s.writeAudit(ctx, user, "auth.logout", "refresh_token", token.ID.String(), nil)
+	}
+	return nil
 }
 
 func (s Service) Me(ctx context.Context, userID uuid.UUID) (UserResponse, error) {
@@ -175,6 +191,7 @@ func (s Service) seedAdminRBAC(ctx context.Context, adminUserID uuid.UUID, tenan
 		{ID: uuid.New(), Code: "tenants:create", Name: "Create tenants"},
 		{ID: uuid.New(), Code: "tenants:update", Name: "Update tenants"},
 		{ID: uuid.New(), Code: "tenants:delete", Name: "Delete tenants"},
+		{ID: uuid.New(), Code: "audit_logs:read", Name: "Read audit logs"},
 	}
 
 	for _, permission := range permissions {
@@ -250,6 +267,20 @@ func (s Service) createAuthResponse(ctx context.Context, user User, now time.Tim
 
 func invalidCredentials() error {
 	return apperrors.New("UNAUTHORIZED", fiber.StatusUnauthorized, "Invalid email or password")
+}
+
+func (s Service) writeAudit(ctx context.Context, user User, action string, resourceType string, resourceID string, metadata map[string]any) error {
+	if s.audit == nil {
+		return nil
+	}
+	return s.audit.Write(ctx, audit.Event{
+		TenantID:     user.TenantID,
+		ActorUserID:  &user.ID,
+		Action:       action,
+		ResourceType: resourceType,
+		ResourceID:   &resourceID,
+		Metadata:     metadata,
+	})
 }
 
 func toUserResponse(user User) UserResponse {
