@@ -30,14 +30,22 @@ This starts:
 - Admin seed.
 - Backend API.
 - Web app.
-- Nginx reverse proxy.
 
 Local URLs:
 
-- Web through Nginx: `http://localhost`
 - Web direct: `http://localhost:3000`
 - Backend direct: `http://localhost:18080`
 - Backend health: `http://localhost:18080/health`
+
+Nginx is optional for local reverse-proxy testing. Run it only when the Nginx image is already available locally or Docker can access the registry:
+
+```text
+pnpm dev:edge
+```
+
+Nginx URL:
+
+- Web through Nginx: `http://localhost`
 
 Default local admin:
 

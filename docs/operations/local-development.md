@@ -26,7 +26,20 @@ pnpm --filter @essk/web dev
 pnpm dev:up
 ```
 
-This command runs PostgreSQL, Redis, migrations, admin seed, backend, web, and Nginx.
+This command runs PostgreSQL, Redis, migrations, admin seed, backend, and web.
+
+Default local URLs:
+
+```text
+http://localhost:3000
+http://localhost:18080/health
+```
+
+Nginx is optional for local reverse-proxy testing and is disabled by default to avoid blocking startup when Docker cannot pull `nginx:1.27-alpine`:
+
+```text
+pnpm dev:edge
+```
 
 Default admin:
 

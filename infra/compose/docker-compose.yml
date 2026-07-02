@@ -105,9 +105,12 @@ services:
     build:
       context: ../..
       dockerfile: infra/docker/web.Dockerfile
+      args:
+        NEXT_PUBLIC_APP_NAME: ESSK
+        NEXT_PUBLIC_API_BASE_URL: http://localhost:18080/api/v1
     environment:
       NEXT_PUBLIC_APP_NAME: ESSK
-      NEXT_PUBLIC_API_BASE_URL: http://localhost/api/v1
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:18080/api/v1
     ports:
       - "3000:3000"
     depends_on:
@@ -115,6 +118,8 @@ services:
         condition: service_healthy
 
   nginx:
+    profiles:
+      - edge
     image: nginx:1.27-alpine
     ports:
       - "80:80"

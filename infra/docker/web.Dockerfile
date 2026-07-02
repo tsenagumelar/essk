@@ -12,6 +12,11 @@ FROM node:24-alpine AS builder
 
 WORKDIR /app
 
+ARG NEXT_PUBLIC_APP_NAME=ESSK
+ARG NEXT_PUBLIC_API_BASE_URL=http://localhost:18080/api/v1
+ENV NEXT_PUBLIC_APP_NAME=$NEXT_PUBLIC_APP_NAME
+ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
+
 RUN corepack enable
 
 COPY --from=deps /app/node_modules ./node_modules
@@ -24,6 +29,8 @@ FROM node:24-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
+ENV NEXT_PUBLIC_APP_NAME=ESSK
+ENV NEXT_PUBLIC_API_BASE_URL=http://localhost:18080/api/v1
 
 RUN addgroup -S nextjs && adduser -S nextjs -G nextjs
 

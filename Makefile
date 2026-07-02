@@ -1,9 +1,12 @@
 COMPOSE_FILE := infra/compose/docker-compose.yml
 
-.PHONY: dev dev-down dev-logs dev-reset test
+.PHONY: dev dev-edge dev-down dev-logs dev-reset test
 
 dev:
 	docker compose -f $(COMPOSE_FILE) up --build
+
+dev-edge:
+	docker compose -f $(COMPOSE_FILE) --profile edge up --build
 
 dev-down:
 	docker compose -f $(COMPOSE_FILE) down
