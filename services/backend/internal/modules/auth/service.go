@@ -10,11 +10,13 @@ import (
 	"github.com/tsenagumelar/essk/services/backend/internal/authn"
 	"github.com/tsenagumelar/essk/services/backend/internal/config"
 	apperrors "github.com/tsenagumelar/essk/services/backend/internal/errors"
+	"github.com/tsenagumelar/essk/services/backend/internal/modules/rbac"
 )
 
 type Service struct {
 	cfg      config.Config
 	repo     Repository
+	rbacRepo *rbac.Repository
 	hasher   PasswordHasher
 	tokenSvc authn.TokenService
 	now      func() time.Time
@@ -28,6 +30,11 @@ func NewService(cfg config.Config, repo Repository, hasher PasswordHasher, token
 		tokenSvc: tokenSvc,
 		now:      time.Now,
 	}
+}
+
+func (s Service) WithRBAC(repo rbac.Repository) Service {
+	s.rbacRepo = &repo
+	return s
 }
 
 func (s Service) Login(ctx context.Context, req LoginRequest) (AuthResponse, error) {
@@ -118,9 +125,12 @@ func (s Service) SeedAdmin(ctx context.Context) error {
 		return err
 	}
 
-	_, err = s.repo.FindUserByEmail(ctx, s.cfg.Seed.AdminEmail)
+	existingUser, err := s.repo.FindUserByEmail(ctx, s.cfg.Seed.AdminEmail)
 	if err == nil {
-		return nil
+		if s.rbacRepo == nil {
+			return nil
+		}
+		return s.seedAdminRBAC(ctx, existingUser.ID, existingUser.TenantID, now)
 	}
 	if !errors.Is(err, ErrNotFound) {
 		return err
@@ -142,7 +152,70 @@ func (s Service) SeedAdmin(ctx context.Context) error {
 		IsActive:     true,
 	}
 
-	return s.repo.EnsureUser(ctx, user, userID, now)
+	if err := s.repo.EnsureUser(ctx, user, userID, now); err != nil {
+		return err
+	}
+
+	if s.rbacRepo == nil {
+		return nil
+	}
+	return s.seedAdminRBAC(ctx, userID, &existingTenantID, now)
+}
+
+func (s Service) seedAdminRBAC(ctx context.Context, adminUserID uuid.UUID, tenantID *uuid.UUID, now time.Time) error {
+	permissions := []rbac.Permission{
+		{ID: uuid.New(), Code: "permissions:read", Name: "Read permissions"},
+		{ID: uuid.New(), Code: "roles:read", Name: "Read roles"},
+		{ID: uuid.New(), Code: "roles:create", Name: "Create roles"},
+		{ID: uuid.New(), Code: "roles:update", Name: "Update roles"},
+		{ID: uuid.New(), Code: "roles:delete", Name: "Delete roles"},
+		{ID: uuid.New(), Code: "roles:manage_permissions", Name: "Manage role permissions"},
+		{ID: uuid.New(), Code: "users:manage_roles", Name: "Manage user roles"},
+		{ID: uuid.New(), Code: "tenants:read", Name: "Read tenants"},
+		{ID: uuid.New(), Code: "tenants:create", Name: "Create tenants"},
+		{ID: uuid.New(), Code: "tenants:update", Name: "Update tenants"},
+		{ID: uuid.New(), Code: "tenants:delete", Name: "Delete tenants"},
+	}
+
+	for _, permission := range permissions {
+		if err := s.rbacRepo.EnsurePermission(ctx, permission, &adminUserID, now); err != nil {
+			return err
+		}
+	}
+
+	description := "System administrator role"
+	adminRole := rbac.Role{
+		ID:          uuid.New(),
+		TenantID:    tenantID,
+		Name:        "Administrator",
+		Code:        "admin",
+		Description: &description,
+		IsSystem:    true,
+		IsActive:    true,
+	}
+	if err := s.rbacRepo.EnsureRole(ctx, adminRole, adminUserID, now); err != nil {
+		return err
+	}
+
+	storedRole, err := s.rbacRepo.FindRoleByCode(ctx, tenantID, "admin")
+	if err != nil {
+		return err
+	}
+	if err := s.rbacRepo.AssignRoleToUser(ctx, adminUserID, storedRole.ID, adminUserID, now); err != nil {
+		return err
+	}
+
+	for _, permission := range permissions {
+		storedPermission, err := s.rbacRepo.FindPermissionByCode(ctx, permission.Code)
+		if err != nil {
+			return err
+		}
+		if err := s.rbacRepo.AssignPermission(ctx, storedRole.ID, storedPermission.ID, adminUserID, now); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (s Service) createAuthResponse(ctx context.Context, user User, now time.Time) (AuthResponse, error) {

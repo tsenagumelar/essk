@@ -20,6 +20,8 @@ import (
 	"github.com/tsenagumelar/essk/services/backend/internal/database"
 	apperrors "github.com/tsenagumelar/essk/services/backend/internal/errors"
 	authmodule "github.com/tsenagumelar/essk/services/backend/internal/modules/auth"
+	"github.com/tsenagumelar/essk/services/backend/internal/modules/rbac"
+	tenantmodule "github.com/tsenagumelar/essk/services/backend/internal/modules/tenant"
 	"github.com/tsenagumelar/essk/services/backend/internal/response"
 	appvalidator "github.com/tsenagumelar/essk/services/backend/internal/validator"
 )
@@ -114,6 +116,16 @@ func (a *App) registerRoutes() {
 		authService := authmodule.NewService(a.cfg, authRepo, authmodule.NewPasswordHasher(), tokenService)
 		authHandler := authmodule.NewHandler(authService, appvalidator.New())
 		authmodule.RegisterRoutes(api, authHandler, tokenService)
+
+		rbacRepo := rbac.NewRepository(a.db)
+		rbacService := rbac.NewService(rbacRepo)
+		rbacHandler := rbac.NewHandler(rbacService, appvalidator.New())
+		rbac.RegisterRoutes(api, rbacHandler, tokenService, rbacRepo)
+
+		tenantRepo := tenantmodule.NewRepository(a.db)
+		tenantService := tenantmodule.NewService(tenantRepo)
+		tenantHandler := tenantmodule.NewHandler(tenantService, appvalidator.New())
+		tenantmodule.RegisterRoutes(api, tenantHandler, tokenService, rbacRepo)
 	}
 }
 

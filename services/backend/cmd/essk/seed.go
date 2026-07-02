@@ -10,6 +10,7 @@ import (
 	"github.com/tsenagumelar/essk/services/backend/internal/config"
 	"github.com/tsenagumelar/essk/services/backend/internal/database"
 	authmodule "github.com/tsenagumelar/essk/services/backend/internal/modules/auth"
+	"github.com/tsenagumelar/essk/services/backend/internal/modules/rbac"
 )
 
 func runSeed(args []string) {
@@ -30,7 +31,8 @@ func runSeed(args []string) {
 	defer db.Close()
 
 	repo := authmodule.NewRepository(db)
-	service := authmodule.NewService(cfg, repo, authmodule.NewPasswordHasher(), authn.NewTokenService(cfg.Auth))
+	rbacRepo := rbac.NewRepository(db)
+	service := authmodule.NewService(cfg, repo, authmodule.NewPasswordHasher(), authn.NewTokenService(cfg.Auth)).WithRBAC(rbacRepo)
 	if err := service.SeedAdmin(ctx); err != nil {
 		fmt.Printf("failed to seed admin: %v\n", err)
 		os.Exit(1)

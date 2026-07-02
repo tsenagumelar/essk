@@ -75,12 +75,12 @@ Status legend:
 
 ## Milestone 3 - Tenant And RBAC
 
-- `[ ]` Add tenant module.
-- `[ ]` Add role module.
-- `[ ]` Add permission module.
-- `[ ]` Add user-role assignment.
-- `[ ]` Add role-permission assignment.
-- `[ ]` Add permission middleware.
+- `[x]` Add tenant module.
+- `[x]` Add role module.
+- `[x]` Add permission module.
+- `[x]` Add user-role assignment.
+- `[x]` Add role-permission assignment.
+- `[x]` Add permission middleware.
 - `[ ]` Add tenant boundary tests.
 
 ## Milestone 4 - Audit And Hardening
