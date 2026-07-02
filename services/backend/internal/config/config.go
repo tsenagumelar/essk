@@ -13,6 +13,7 @@ type Config struct {
 	Database DatabaseConfig
 	Redis    RedisConfig
 	Auth     AuthConfig
+	Seed     SeedConfig
 	CORS     CORSConfig
 	Logging  LoggingConfig
 }
@@ -45,6 +46,14 @@ type AuthConfig struct {
 	SigningKey      string
 	AccessTokenTTL  time.Duration
 	RefreshTokenTTL time.Duration
+}
+
+type SeedConfig struct {
+	AdminEmail    string
+	AdminName     string
+	AdminPassword string
+	TenantName    string
+	TenantSlug    string
 }
 
 type CORSConfig struct {
@@ -91,6 +100,13 @@ func Load() Config {
 			SigningKey:      getEnv("JWT_SIGNING_KEY", "change-me-local-only"),
 			AccessTokenTTL:  getEnvDuration("JWT_ACCESS_TOKEN_TTL", 15*time.Minute),
 			RefreshTokenTTL: getEnvDuration("JWT_REFRESH_TOKEN_TTL", 168*time.Hour),
+		},
+		Seed: SeedConfig{
+			AdminEmail:    getEnv("SEED_ADMIN_EMAIL", "admin@essk.local"),
+			AdminName:     getEnv("SEED_ADMIN_NAME", "ESSK Admin"),
+			AdminPassword: getEnv("SEED_ADMIN_PASSWORD", "Admin123!"),
+			TenantName:    getEnv("SEED_TENANT_NAME", "System Tenant"),
+			TenantSlug:    getEnv("SEED_TENANT_SLUG", "system"),
 		},
 		CORS: CORSConfig{
 			AllowedOrigins: getEnv("ESSK_CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:3001"),

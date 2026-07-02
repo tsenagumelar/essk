@@ -21,9 +21,23 @@ export class ApiError extends Error {
 }
 
 export async function apiGet<T>(path: string): Promise<T> {
+  return apiRequest<T>(path, { method: "GET" });
+}
+
+export async function apiPost<T>(path: string, body: unknown): Promise<T> {
+  return apiRequest<T>(path, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+async function apiRequest<T>(path: string, init: RequestInit): Promise<T> {
   const response = await fetch(`${env.apiBaseUrl}${path}`, {
+    ...init,
     headers: {
       Accept: "application/json",
+      "Content-Type": "application/json",
+      ...init.headers,
     },
     cache: "no-store",
   });

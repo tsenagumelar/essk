@@ -14,11 +14,14 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
+	"github.com/tsenagumelar/essk/services/backend/internal/authn"
 	"github.com/tsenagumelar/essk/services/backend/internal/cache"
 	"github.com/tsenagumelar/essk/services/backend/internal/config"
 	"github.com/tsenagumelar/essk/services/backend/internal/database"
 	apperrors "github.com/tsenagumelar/essk/services/backend/internal/errors"
+	authmodule "github.com/tsenagumelar/essk/services/backend/internal/modules/auth"
 	"github.com/tsenagumelar/essk/services/backend/internal/response"
+	appvalidator "github.com/tsenagumelar/essk/services/backend/internal/validator"
 )
 
 type App struct {
@@ -104,6 +107,14 @@ func (a *App) registerRoutes() {
 	api.Get("/health", a.health)
 	api.Get("/ready", a.ready)
 	api.Get("/version", a.version)
+
+	if a.db != nil {
+		tokenService := authn.NewTokenService(a.cfg.Auth)
+		authRepo := authmodule.NewRepository(a.db)
+		authService := authmodule.NewService(a.cfg, authRepo, authmodule.NewPasswordHasher(), tokenService)
+		authHandler := authmodule.NewHandler(authService, appvalidator.New())
+		authmodule.RegisterRoutes(api, authHandler, tokenService)
+	}
 }
 
 func (a *App) errorHandler(c *fiber.Ctx, err error) error {

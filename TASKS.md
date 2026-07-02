@@ -63,15 +63,15 @@ Status legend:
 
 ## Milestone 2 - Auth Core
 
-- `[ ]` Add core auth migrations.
-- `[ ]` Add password hashing.
-- `[ ]` Add login endpoint.
-- `[ ]` Add refresh token rotation.
-- `[ ]` Add logout endpoint.
-- `[ ]` Add auth middleware.
-- `[ ]` Add `/auth/me`.
-- `[ ]` Add seeded admin user.
-- `[ ]` Connect frontend login flow.
+- `[x]` Add core auth migrations.
+- `[x]` Add password hashing.
+- `[x]` Add login endpoint.
+- `[x]` Add refresh token rotation.
+- `[x]` Add logout endpoint.
+- `[x]` Add auth middleware.
+- `[x]` Add `/auth/me`.
+- `[x]` Add seeded admin user.
+- `[x]` Connect frontend login flow.
 
 ## Milestone 3 - Tenant And RBAC
 

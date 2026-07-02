@@ -1,10 +1,15 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
+import { login } from "@/features/auth/api";
 import { loginSchema, type LoginFormValues } from "@/features/auth/schema";
+import { storeSession } from "@/features/auth/session";
 
 export function LoginForm() {
+  const router = useRouter();
   const {
     register,
     handleSubmit,
@@ -17,8 +22,16 @@ export function LoginForm() {
     },
   });
 
+  const mutation = useMutation({
+    mutationFn: login,
+    onSuccess: (result) => {
+      storeSession(result);
+      router.push("/dashboard");
+    },
+  });
+
   async function onSubmit(values: LoginFormValues) {
-    console.info("login placeholder", values.email);
+    await mutation.mutateAsync(values);
   }
 
   return (
@@ -49,12 +62,14 @@ export function LoginForm() {
         {errors.password ? <p className="mt-1 text-xs text-destructive">{errors.password.message}</p> : null}
       </div>
 
+      {mutation.isError ? <p className="text-sm text-destructive">Invalid email or password.</p> : null}
+
       <button
         type="submit"
-        disabled={isSubmitting}
+        disabled={isSubmitting || mutation.isPending}
         className="w-full rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
       >
-        {isSubmitting ? "Signing in..." : "Sign in"}
+        {isSubmitting || mutation.isPending ? "Signing in..." : "Sign in"}
       </button>
     </form>
   );
