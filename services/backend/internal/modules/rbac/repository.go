@@ -223,6 +223,42 @@ func (r Repository) RemoveRoleFromUser(ctx context.Context, userID uuid.UUID, ro
 	return err
 }
 
+func (r Repository) ReplaceUserRoles(ctx context.Context, userID uuid.UUID, roleIDs []uuid.UUID, actorID uuid.UUID, now time.Time) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	_, err = tx.Exec(ctx, `
+		UPDATE user_roles
+		SET is_active = false,
+			is_deleted = true,
+			updated_by = $2,
+			updated_date = $3
+		WHERE user_id = $1
+	`, userID, actorID, now)
+	if err != nil {
+		return err
+	}
+
+	for _, roleID := range roleIDs {
+		_, err = tx.Exec(ctx, `
+			INSERT INTO user_roles (
+				user_id, role_id, is_active,
+				created_by, created_date, updated_by, updated_date, is_deleted
+			) VALUES ($1, $2, true, $3, $4, $3, $4, false)
+			ON CONFLICT (user_id, role_id)
+			DO UPDATE SET is_active = true, is_deleted = false, updated_by = $3, updated_date = $4
+		`, userID, roleID, actorID, now)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit(ctx)
+}
+
 func (r Repository) EnsurePermission(ctx context.Context, permission Permission, actorID *uuid.UUID, now time.Time) error {
 	_, err := r.db.Exec(ctx, `
 		INSERT INTO permissions (
@@ -236,12 +272,19 @@ func (r Repository) EnsurePermission(ctx context.Context, permission Permission,
 }
 
 func (r Repository) EnsureRole(ctx context.Context, role Role, actorID uuid.UUID, now time.Time) error {
-	_, err := r.db.Exec(ctx, `
+	_, err := r.FindRoleByCode(ctx, role.TenantID, role.Code)
+	if err == nil {
+		return nil
+	}
+	if !errors.Is(err, ErrNotFound) {
+		return err
+	}
+
+	_, err = r.db.Exec(ctx, `
 		INSERT INTO roles (
 			id, tenant_id, name, code, description, is_system, is_active,
 			created_by, created_date, updated_by, updated_date, is_deleted
 		) VALUES ($1, $2, $3, $4, $5, $6, true, $7, $8, $7, $8, false)
-		ON CONFLICT DO NOTHING
 	`, role.ID, role.TenantID, role.Name, role.Code, role.Description, role.IsSystem, actorID, now)
 	return err
 }

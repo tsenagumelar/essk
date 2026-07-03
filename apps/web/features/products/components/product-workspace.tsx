@@ -10,6 +10,7 @@ import {
   updateProduct,
   type Product,
 } from "@/features/products/api";
+import { ConfirmationDialog } from "@/features/shared/components/confirmation-dialog";
 
 type FormState = {
   code: string;
@@ -31,6 +32,11 @@ const emptyForm: FormState = {
 
 const pageSizeOptions = [5, 10, 20];
 const emptyProducts: Product[] = [];
+
+type PendingAction =
+  | { type: "create" }
+  | { type: "update"; product: Product }
+  | { type: "delete"; product: Product };
 
 function formatCurrency(priceCents: number) {
   return new Intl.NumberFormat("id-ID", {
@@ -104,6 +110,7 @@ export function ProductWorkspace() {
   const [statusFilter, setStatusFilter] = useState<"all" | Product["status"]>("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
 
   const productsQuery = useQuery({
     queryKey: ["products"],
@@ -201,10 +208,34 @@ export function ProductWorkspace() {
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (editing) {
+      setPendingAction({ type: "update", product: editing });
+      return;
+    }
+
+    setPendingAction({ type: "create" });
+  }
+
+  async function confirmPendingAction() {
+    if (!pendingAction) {
+      return;
+    }
+
+    if (pendingAction.type === "create") {
+      await createMutation.mutateAsync({
+        code: form.code,
+        name: form.name,
+        category: form.category,
+        price_cents: toPriceCents(form.price),
+      });
+      setPendingAction(null);
+      return;
+    }
+
+    if (pendingAction.type === "update") {
       await updateMutation.mutateAsync({
-        id: editing.id,
+        id: pendingAction.product.id,
         product: {
-          ...editing,
+          ...pendingAction.product,
           name: form.name,
           category: form.category,
           price_cents: toPriceCents(form.price),
@@ -212,21 +243,60 @@ export function ProductWorkspace() {
           is_active: form.isActive,
         },
       });
+      setPendingAction(null);
       return;
     }
 
-    await createMutation.mutateAsync({
-      code: form.code,
-      name: form.name,
-      category: form.category,
-      price_cents: toPriceCents(form.price),
-    });
+    await deleteMutation.mutateAsync(pendingAction.product.id);
+    setPendingAction(null);
+  }
+
+  function cancelPendingAction() {
+    setPendingAction(null);
+  }
+
+  function getConfirmationContent(action: PendingAction | null) {
+    if (!action) {
+      return {
+        title: "",
+        description: "",
+        confirmLabel: "Confirm",
+        variant: "primary" as const,
+      };
+    }
+
+    if (action.type === "create") {
+      return {
+        title: "Save new product?",
+        description: `This will add "${form.name || form.code || "new product"}" to master data.`,
+        confirmLabel: "Save Add",
+        variant: "primary" as const,
+      };
+    }
+
+    if (action.type === "update") {
+      return {
+        title: "Save product changes?",
+        description: `This will update "${action.product.name}" with the latest form values.`,
+        confirmLabel: "Save Edit",
+        variant: "primary" as const,
+      };
+    }
+
+    return {
+      title: "Delete product?",
+      description: `This will soft delete "${action.product.name}" from master data.`,
+      confirmLabel: "Delete",
+      variant: "danger" as const,
+    };
   }
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
+  const isProcessing = isSaving || deleteMutation.isPending;
   const error = productsQuery.error ?? createMutation.error ?? updateMutation.error ?? deleteMutation.error;
   const firstRecord = filteredProducts.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const lastRecord = Math.min(currentPage * pageSize, filteredProducts.length);
+  const confirmation = getConfirmationContent(pendingAction);
 
   return (
     <>
@@ -351,7 +421,7 @@ export function ProductWorkspace() {
                         className="inline-flex h-8 w-8 items-center justify-center rounded-lg border text-destructive hover:bg-slate-50"
                         aria-label={`Delete ${product.name}`}
                         disabled={deleteMutation.isPending}
-                        onClick={() => deleteMutation.mutate(product.id)}
+                        onClick={() => setPendingAction({ type: "delete", product })}
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -515,6 +585,17 @@ export function ProductWorkspace() {
           </section>
         </div>
       ) : null}
+
+      <ConfirmationDialog
+        open={Boolean(pendingAction)}
+        title={confirmation.title}
+        description={confirmation.description}
+        confirmLabel={confirmation.confirmLabel}
+        variant={confirmation.variant}
+        isLoading={isProcessing}
+        onCancel={cancelPendingAction}
+        onConfirm={confirmPendingAction}
+      />
     </>
   );
 }

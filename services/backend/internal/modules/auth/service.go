@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -133,12 +134,12 @@ func (s Service) SeedAdmin(ctx context.Context) error {
 	now := s.now().UTC()
 	tenantID := uuid.New()
 	if err := s.repo.EnsureTenant(ctx, tenantID, s.cfg.Seed.TenantName, s.cfg.Seed.TenantSlug, now); err != nil {
-		return err
+		return fmt.Errorf("ensure seed tenant %s: %w", s.cfg.Seed.TenantSlug, err)
 	}
 
 	existingTenantID, err := s.repo.FindTenantBySlug(ctx, s.cfg.Seed.TenantSlug)
 	if err != nil {
-		return err
+		return fmt.Errorf("find seed tenant %s: %w", s.cfg.Seed.TenantSlug, err)
 	}
 
 	existingUser, err := s.repo.FindUserByEmail(ctx, s.cfg.Seed.AdminEmail)
@@ -149,12 +150,12 @@ func (s Service) SeedAdmin(ctx context.Context) error {
 		return s.seedAdminRBAC(ctx, existingUser.ID, existingUser.TenantID, now)
 	}
 	if !errors.Is(err, ErrNotFound) {
-		return err
+		return fmt.Errorf("find seed admin user %s: %w", s.cfg.Seed.AdminEmail, err)
 	}
 
 	passwordHash, err := s.hasher.Hash(s.cfg.Seed.AdminPassword)
 	if err != nil {
-		return err
+		return fmt.Errorf("hash seed admin password: %w", err)
 	}
 
 	userID := uuid.New()
@@ -169,7 +170,7 @@ func (s Service) SeedAdmin(ctx context.Context) error {
 	}
 
 	if err := s.repo.EnsureUser(ctx, user, userID, now); err != nil {
-		return err
+		return fmt.Errorf("ensure seed admin user %s: %w", s.cfg.Seed.AdminEmail, err)
 	}
 
 	if s.rbacRepo == nil {
@@ -186,6 +187,10 @@ func (s Service) seedAdminRBAC(ctx context.Context, adminUserID uuid.UUID, tenan
 		{ID: uuid.New(), Code: "roles:update", Name: "Update roles"},
 		{ID: uuid.New(), Code: "roles:delete", Name: "Delete roles"},
 		{ID: uuid.New(), Code: "roles:manage_permissions", Name: "Manage role permissions"},
+		{ID: uuid.New(), Code: "users:read", Name: "Read users"},
+		{ID: uuid.New(), Code: "users:create", Name: "Create users"},
+		{ID: uuid.New(), Code: "users:update", Name: "Update users"},
+		{ID: uuid.New(), Code: "users:delete", Name: "Delete users"},
 		{ID: uuid.New(), Code: "users:manage_roles", Name: "Manage user roles"},
 		{ID: uuid.New(), Code: "tenants:read", Name: "Read tenants"},
 		{ID: uuid.New(), Code: "tenants:create", Name: "Create tenants"},
@@ -200,29 +205,88 @@ func (s Service) seedAdminRBAC(ctx context.Context, adminUserID uuid.UUID, tenan
 
 	for _, permission := range permissions {
 		if err := s.rbacRepo.EnsurePermission(ctx, permission, &adminUserID, now); err != nil {
-			return err
+			return fmt.Errorf("ensure permission %s: %w", permission.Code, err)
 		}
 	}
 
-	description := "System administrator role"
-	adminRole := rbac.Role{
+	if err := s.ensureTenantRoles(ctx, tenantID, adminUserID, now, permissions); err != nil {
+		return fmt.Errorf("ensure system tenant roles: %w", err)
+	}
+
+	superAdminDescription := "Global super administrator role"
+	superAdminRole := rbac.Role{
 		ID:          uuid.New(),
-		TenantID:    tenantID,
-		Name:        "Administrator",
-		Code:        "admin",
-		Description: &description,
+		TenantID:    nil,
+		Name:        "Super Administrator",
+		Code:        "super_admin",
+		Description: &superAdminDescription,
 		IsSystem:    true,
 		IsActive:    true,
 	}
-	if err := s.rbacRepo.EnsureRole(ctx, adminRole, adminUserID, now); err != nil {
+	if err := s.rbacRepo.EnsureRole(ctx, superAdminRole, adminUserID, now); err != nil {
+		return fmt.Errorf("ensure super_admin role: %w", err)
+	}
+
+	storedRole, err := s.rbacRepo.FindRoleByCode(ctx, nil, "super_admin")
+	if err != nil {
+		return fmt.Errorf("find super_admin role: %w", err)
+	}
+	if err := s.rbacRepo.ReplaceUserRoles(ctx, adminUserID, []uuid.UUID{storedRole.ID}, adminUserID, now); err != nil {
+		return fmt.Errorf("replace default admin roles with super_admin: %w", err)
+	}
+
+	for _, permission := range permissions {
+		storedPermission, err := s.rbacRepo.FindPermissionByCode(ctx, permission.Code)
+		if err != nil {
+			return fmt.Errorf("find permission %s: %w", permission.Code, err)
+		}
+		if err := s.rbacRepo.AssignPermission(ctx, storedRole.ID, storedPermission.ID, adminUserID, now); err != nil {
+			return fmt.Errorf("assign permission %s to super_admin: %w", permission.Code, err)
+		}
+	}
+
+	if err := s.seedSampleTenants(ctx, adminUserID, now, permissions); err != nil {
+		return fmt.Errorf("seed sample tenants: %w", err)
+	}
+
+	return nil
+}
+
+func (s Service) ensureTenantRoles(ctx context.Context, tenantID *uuid.UUID, actorID uuid.UUID, now time.Time, permissions []rbac.Permission) error {
+	adminDescription := "Tenant administrator role"
+	tenantAdminRole := rbac.Role{
+		ID:          uuid.New(),
+		TenantID:    tenantID,
+		Name:        "Tenant Administrator",
+		Code:        "admin",
+		Description: &adminDescription,
+		IsSystem:    true,
+		IsActive:    true,
+	}
+	if err := s.rbacRepo.EnsureRole(ctx, tenantAdminRole, actorID, now); err != nil {
 		return err
 	}
 
-	storedRole, err := s.rbacRepo.FindRoleByCode(ctx, tenantID, "admin")
+	userDescription := "Tenant user role"
+	tenantUserRole := rbac.Role{
+		ID:          uuid.New(),
+		TenantID:    tenantID,
+		Name:        "User",
+		Code:        "user",
+		Description: &userDescription,
+		IsSystem:    true,
+		IsActive:    true,
+	}
+	if err := s.rbacRepo.EnsureRole(ctx, tenantUserRole, actorID, now); err != nil {
+		return err
+	}
+
+	adminRole, err := s.rbacRepo.FindRoleByCode(ctx, tenantID, "admin")
 	if err != nil {
 		return err
 	}
-	if err := s.rbacRepo.AssignRoleToUser(ctx, adminUserID, storedRole.ID, adminUserID, now); err != nil {
+	userRole, err := s.rbacRepo.FindRoleByCode(ctx, tenantID, "user")
+	if err != nil {
 		return err
 	}
 
@@ -231,12 +295,86 @@ func (s Service) seedAdminRBAC(ctx context.Context, adminUserID uuid.UUID, tenan
 		if err != nil {
 			return err
 		}
-		if err := s.rbacRepo.AssignPermission(ctx, storedRole.ID, storedPermission.ID, adminUserID, now); err != nil {
+		if err := s.rbacRepo.AssignPermission(ctx, adminRole.ID, storedPermission.ID, actorID, now); err != nil {
+			return err
+		}
+		if permission.Code == "products:read" {
+			if err := s.rbacRepo.AssignPermission(ctx, userRole.ID, storedPermission.ID, actorID, now); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (s Service) seedSampleTenants(ctx context.Context, actorID uuid.UUID, now time.Time, permissions []rbac.Permission) error {
+	samples := []struct {
+		name string
+		slug string
+	}{
+		{name: "Acme Corporation", slug: "acme"},
+		{name: "Globex Indonesia", slug: "globex"},
+	}
+
+	for _, sample := range samples {
+		if err := s.repo.EnsureTenant(ctx, uuid.New(), sample.name, sample.slug, now); err != nil {
+			return err
+		}
+		tenantID, err := s.repo.FindTenantBySlug(ctx, sample.slug)
+		if err != nil {
+			return err
+		}
+		if err := s.ensureTenantRoles(ctx, &tenantID, actorID, now, permissions); err != nil {
+			return err
+		}
+
+		adminRole, err := s.rbacRepo.FindRoleByCode(ctx, &tenantID, "admin")
+		if err != nil {
+			return err
+		}
+		userRole, err := s.rbacRepo.FindRoleByCode(ctx, &tenantID, "user")
+		if err != nil {
+			return err
+		}
+
+		if err := s.seedSampleUser(ctx, tenantID, sample.slug+"-admin@essk.local", sample.name+" Admin", "Admin123!", adminRole.ID, actorID, now); err != nil {
+			return err
+		}
+		if err := s.seedSampleUser(ctx, tenantID, sample.slug+"-user@essk.local", sample.name+" User", "User12345!", userRole.ID, actorID, now); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func (s Service) seedSampleUser(ctx context.Context, tenantID uuid.UUID, email string, name string, password string, roleID uuid.UUID, actorID uuid.UUID, now time.Time) error {
+	existing, err := s.repo.FindUserByEmailAndTenant(ctx, email, tenantID)
+	if err == nil {
+		return s.rbacRepo.AssignRoleToUser(ctx, existing.ID, roleID, actorID, now)
+	}
+	if !errors.Is(err, ErrNotFound) {
+		return err
+	}
+
+	passwordHash, err := s.hasher.Hash(password)
+	if err != nil {
+		return err
+	}
+	user := User{
+		ID:           uuid.New(),
+		TenantID:     &tenantID,
+		Email:        email,
+		Name:         name,
+		PasswordHash: passwordHash,
+		Status:       "active",
+		IsActive:     true,
+	}
+	if err := s.repo.EnsureUser(ctx, user, actorID, now); err != nil {
+		return err
+	}
+	return s.rbacRepo.AssignRoleToUser(ctx, user.ID, roleID, actorID, now)
 }
 
 func (s Service) createAuthResponse(ctx context.Context, user User, now time.Time) (AuthResponse, error) {

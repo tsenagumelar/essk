@@ -105,7 +105,12 @@ func (r Repository) EnsureTenant(ctx context.Context, id uuid.UUID, name string,
 			id, name, slug, status, is_active,
 			created_by, created_date, updated_by, updated_date, is_deleted
 		) VALUES ($1, $2, $3, 'active', true, NULL, $4, NULL, $4, false)
-		ON CONFLICT (slug) DO NOTHING
+		ON CONFLICT (slug)
+		DO UPDATE SET name = $2,
+			status = 'active',
+			is_active = true,
+			is_deleted = false,
+			updated_date = $4
 	`, id, name, slug, now)
 	return err
 }
@@ -136,6 +141,19 @@ func (r Repository) EnsureUser(ctx context.Context, user User, actorID uuid.UUID
 		ON CONFLICT DO NOTHING
 	`, user.ID, user.TenantID, user.Email, user.Name, user.PasswordHash, user.Status, actorID, now)
 	return err
+}
+
+func (r Repository) FindUserByEmailAndTenant(ctx context.Context, email string, tenantID uuid.UUID) (User, error) {
+	row := r.db.QueryRow(ctx, `
+		SELECT id, tenant_id, email, name, password_hash, status, is_active, is_deleted
+		FROM users
+		WHERE lower(email) = lower($1)
+			AND tenant_id = $2
+			AND is_deleted = false
+		LIMIT 1
+	`, email, tenantID)
+
+	return scanUser(row)
 }
 
 func scanUser(row pgx.Row) (User, error) {

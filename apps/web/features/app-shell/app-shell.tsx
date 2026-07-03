@@ -7,15 +7,19 @@ import {
   LogOut,
   Menu,
   Package,
+  Shield,
   Search,
   Settings,
   ShieldCheck,
+  Building2,
+  Users,
   UserCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { clearSession, getAccessToken, getStoredUser } from "@/features/auth/session";
+import { ConfirmationDialog } from "@/features/shared/components/confirmation-dialog";
 import { cn } from "@/lib/utils";
 
 const navGroups = [
@@ -25,7 +29,12 @@ const navGroups = [
   },
   {
     label: "Master Data",
-    items: [{ href: "/products", label: "Products", icon: Package }],
+    items: [
+      { href: "/tenants", label: "Tenants", icon: Building2 },
+      { href: "/users", label: "Users", icon: Users },
+      { href: "/roles", label: "Roles", icon: Shield },
+      { href: "/products", label: "Products", icon: Package },
+    ],
   },
   {
     label: "Settings",
@@ -39,6 +48,7 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
   const [isReady, setIsReady] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
   const [user, setUser] = useState<ReturnType<typeof getStoredUser>>(null);
 
   useEffect(() => {
@@ -62,6 +72,7 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
   }, [user]);
 
   function logout() {
+    setIsLogoutConfirmOpen(false);
     clearSession();
     router.replace("/login");
   }
@@ -215,7 +226,10 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
                     </button>
                     <button
                       className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-destructive hover:bg-muted"
-                      onClick={logout}
+                      onClick={() => {
+                        setIsProfileOpen(false);
+                        setIsLogoutConfirmOpen(true);
+                      }}
                     >
                       <LogOut className="h-4 w-4" />
                       Logout
@@ -229,6 +243,16 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
 
         <main className="px-4 py-6 lg:px-6">{children}</main>
       </div>
+
+      <ConfirmationDialog
+        open={isLogoutConfirmOpen}
+        title="Logout from workspace?"
+        description="Your local session token will be removed and you will be redirected to the login page."
+        confirmLabel="Logout"
+        variant="danger"
+        onCancel={() => setIsLogoutConfirmOpen(false)}
+        onConfirm={logout}
+      />
     </div>
   );
 }
