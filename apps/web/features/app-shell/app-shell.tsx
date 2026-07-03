@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import {
   Bell,
   ChevronDown,
@@ -18,6 +19,7 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { listRoles, listTenants, listUsers } from "@/features/admin/api";
 import { clearSession, getAccessToken, getStoredUser } from "@/features/auth/session";
 import { ConfirmationDialog } from "@/features/shared/components/confirmation-dialog";
 import { cn } from "@/lib/utils";
@@ -50,6 +52,9 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
   const [user, setUser] = useState<ReturnType<typeof getStoredUser>>(null);
+  const tenantsQuery = useQuery({ queryKey: ["tenants"], queryFn: listTenants, enabled: isReady });
+  const rolesQuery = useQuery({ queryKey: ["roles"], queryFn: () => listRoles(), enabled: isReady });
+  const usersQuery = useQuery({ queryKey: ["users"], queryFn: listUsers, enabled: isReady });
 
   useEffect(() => {
     const token = getAccessToken();
@@ -70,6 +75,24 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
       .slice(0, 2)
       .toUpperCase();
   }, [user]);
+
+  const currentUser = useMemo(() => usersQuery.data?.find((candidate) => candidate.id === user?.id), [user?.id, usersQuery.data]);
+  const currentRoleCodes = useMemo(() => {
+    const roles = rolesQuery.data ?? [];
+    return (currentUser?.role_ids ?? [])
+      .map((roleID) => roles.find((role) => role.id === roleID)?.code)
+      .filter(Boolean);
+  }, [currentUser?.role_ids, rolesQuery.data]);
+  const isSuperAdmin = currentRoleCodes.includes("super_admin");
+  const activeTenantLabel = useMemo(() => {
+    if (isSuperAdmin) {
+      return "N/A";
+    }
+    if (!user?.tenant_id) {
+      return "N/A";
+    }
+    return tenantsQuery.data?.find((tenant) => tenant.id === user.tenant_id)?.name ?? user.tenant_id;
+  }, [isSuperAdmin, tenantsQuery.data, user?.tenant_id]);
 
   function logout() {
     setIsLogoutConfirmOpen(false);
@@ -149,11 +172,18 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
           ))}
         </nav>
 
-        <div className={cn("border-t px-5 py-4 text-xs text-muted-foreground", isSidebarCollapsed && "px-2 text-center")}>
+        <div className={cn("space-y-3 border-t px-5 py-4 text-xs text-muted-foreground", isSidebarCollapsed && "px-2 text-center")}>
           {isSidebarCollapsed ? (
-            <p>© 2026</p>
+            <>
+              <p title={`Active tenant: ${activeTenantLabel}`}>Tenant</p>
+              <p>© 2026</p>
+            </>
           ) : (
             <>
+              <div>
+                <p className="font-semibold text-slate-500">Active tenant</p>
+                <p className="mt-1 truncate rounded-lg bg-slate-50 px-2 py-1 text-slate-700">{activeTenantLabel}</p>
+              </div>
               <p>Copyright © 2026 ESSK.</p>
               <p>All rights reserved.</p>
             </>

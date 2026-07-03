@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { Check, ChevronDown, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { Dispatch, FormEvent, SetStateAction, useState } from "react";
 import {
   createRole,
@@ -225,6 +225,10 @@ export function UsersWorkspace() {
   const filtered = users.filter((user) => `${user.name} ${user.email} ${user.status}`.toLowerCase().includes(search.toLowerCase()));
   const roles = rolesQuery.data ?? [];
   const tenants = tenantsQuery.data ?? [];
+  const roleOptions = roles
+    .filter((role) => role.tenant_id === form.tenant_id || form.role_ids.includes(role.id))
+    .map((role) => ({ value: role.id, label: `${role.name} (${role.code})` }));
+  const roleNamesById = new Map(roles.map((role) => [role.id, `${role.name} (${role.code})`]));
   const saveMutation = useMutation({
     mutationFn: async () =>
       editing
@@ -265,11 +269,12 @@ export function UsersWorkspace() {
     <>
       <PageShell title="Users" subtitle="Super admin sees all users; tenant admins are scoped to their tenant." search={search} onSearch={setSearch} onAdd={() => openForm()}>
         <DataTable
-          headers={["Name", "Email", "Tenant", "Status", "Active", "Actions"]}
+          headers={["Name", "Email", "Tenant", "Roles", "Status", "Active", "Actions"]}
           rows={filtered.map((user) => [
             user.name,
             user.email,
             tenants.find((tenant) => tenant.id === user.tenant_id)?.name ?? "-",
+            <RoleBadges key={`${user.id}-roles`} labels={user.role_ids.map((roleID) => roleNamesById.get(roleID) ?? roleID)} />,
             user.status,
             user.is_active ? "Yes" : "No",
             <RowActions
@@ -296,7 +301,7 @@ export function UsersWorkspace() {
             <Input label="Email" value={form.email} disabled={Boolean(editing)} onChange={(value) => setForm((current) => ({ ...current, email: value }))} />
             <Input label="Name" value={form.name} onChange={(value) => setForm((current) => ({ ...current, name: value }))} />
             {!editing ? <Input label="Password" value={form.password} onChange={(value) => setForm((current) => ({ ...current, password: value }))} /> : null}
-            <MultiSelect label="Roles" values={form.role_ids} options={roles.map((role) => ({ value: role.id, label: `${role.name} (${role.code})` }))} onChange={(values) => setForm((current) => ({ ...current, role_ids: values }))} />
+            <RoleDropdown label="Roles" values={form.role_ids} options={roleOptions} onChange={(values) => setForm((current) => ({ ...current, role_ids: values }))} />
             {editing ? <ActiveField form={form} setForm={setForm} /> : null}
             <FormActions onCancel={() => setIsOpen(false)} loading={saveMutation.isPending} />
           </form>
@@ -432,6 +437,22 @@ function RowActions({ onEdit, onDelete }: Readonly<{ onEdit: () => void; onDelet
   );
 }
 
+function RoleBadges({ labels }: Readonly<{ labels: string[] }>) {
+  if (labels.length === 0) {
+    return <span className="text-muted-foreground">-</span>;
+  }
+
+  return (
+    <div className="flex max-w-80 flex-wrap gap-1">
+      {labels.map((label) => (
+        <span key={label} className="rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700">
+          {label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function Input({ label, value, disabled, onChange }: Readonly<{ label: string; value: string; disabled?: boolean; onChange: (value: string) => void }>) {
   return (
     <label className="block text-sm font-medium">
@@ -452,14 +473,52 @@ function Select({ label, value, disabled, options, onChange }: Readonly<{ label:
   );
 }
 
-function MultiSelect({ label, values, options, onChange }: Readonly<{ label: string; values: string[]; options: { value: string; label: string }[]; onChange: (values: string[]) => void }>) {
+function RoleDropdown({ label, values, options, onChange }: Readonly<{ label: string; values: string[]; options: { value: string; label: string }[]; onChange: (values: string[]) => void }>) {
+  const [isOpen, setIsOpen] = useState(false);
+  const selectedLabels = options.filter((option) => values.includes(option.value)).map((option) => option.label);
+
+  function toggle(value: string) {
+    onChange(values.includes(value) ? values.filter((current) => current !== value) : [...values, value]);
+  }
+
   return (
-    <label className="block text-sm font-medium">
-      {label}
-      <select multiple className="mt-1 min-h-24 w-full rounded-lg border px-3 py-2 text-sm outline-none ring-primary focus:ring-2" value={values} onChange={(event) => onChange(Array.from(event.target.selectedOptions).map((option) => option.value))}>
-        {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-      </select>
-    </label>
+    <div className="relative text-sm font-medium">
+      <p>{label}</p>
+      <button
+        type="button"
+        className="mt-1 flex min-h-10 w-full items-center justify-between gap-3 rounded-lg border bg-white px-3 py-2 text-left text-sm outline-none ring-primary focus:ring-2"
+        onClick={() => setIsOpen((current) => !current)}
+      >
+        <span className={selectedLabels.length === 0 ? "text-muted-foreground" : "text-slate-900"}>
+          {selectedLabels.length === 0 ? "Select roles" : selectedLabels.join(", ")}
+        </span>
+        <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+      </button>
+      {isOpen ? (
+        <div className="absolute z-20 mt-2 max-h-56 w-full overflow-auto rounded-lg border bg-white p-2 shadow-lg">
+          {options.length === 0 ? (
+            <p className="px-2 py-2 text-sm text-muted-foreground">No roles available for this tenant.</p>
+          ) : (
+            options.map((option) => {
+              const selected = values.includes(option.value);
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-slate-50"
+                  onClick={() => toggle(option.value)}
+                >
+                  <span className="flex h-4 w-4 items-center justify-center rounded border">
+                    {selected ? <Check className="h-3 w-3" /> : null}
+                  </span>
+                  {option.label}
+                </button>
+              );
+            })
+          )}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
