@@ -10,7 +10,7 @@ import {
   updateProduct,
   type Product,
 } from "@/features/products/api";
-import { ConfirmationDialog } from "@/features/shared/components/confirmation-dialog";
+import { ConfirmationDialog } from "@/shared/molecules/confirmation-dialog";
 
 type FormState = {
   code: string;

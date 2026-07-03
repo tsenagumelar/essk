@@ -1,13 +1,5 @@
-import { RolesWorkspace } from "@/features/admin/components/admin-workspaces";
+import { RolesView } from "@/features/roles";
 
 export default function RolesPage() {
-  return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold">Roles</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Manage global and tenant role master data.</p>
-      </div>
-      <RolesWorkspace />
-    </div>
-  );
+  return <RolesView />;
 }

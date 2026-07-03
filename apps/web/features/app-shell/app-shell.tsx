@@ -19,10 +19,12 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { listRoles, listTenants, listUsers } from "@/features/admin/api";
-import { clearSession, getAccessToken, getStoredUser } from "@/features/auth/session";
-import { ConfirmationDialog } from "@/features/shared/components/confirmation-dialog";
-import { unauthorizedEventName } from "@/lib/api/client";
+import { listRoles } from "@/features/roles/api";
+import { listTenants } from "@/features/tenants/api";
+import { listUsers } from "@/features/users/api";
+import { clearSession, getAccessToken, getStoredUser } from "@/shared/auth/session";
+import { ConfirmationDialog } from "@/shared/molecules/confirmation-dialog";
+import { unauthorizedEventName } from "@/shared/api/client";
 import { cn } from "@/lib/utils";
 
 const navGroups = [

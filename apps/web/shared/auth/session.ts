@@ -1,4 +1,4 @@
-import type { AuthResponse } from "@/features/auth/api";
+import type { AuthResponse } from "@/features/auth/types";
 
 const accessTokenKey = "essk.access_token";
 const refreshTokenKey = "essk.refresh_token";

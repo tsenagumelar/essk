@@ -1,4 +1,4 @@
-import { apiGet } from "@/lib/api/client";
+import { apiGet } from "@/shared/api/client";
 
 export type HealthResponse = {
   app: string;

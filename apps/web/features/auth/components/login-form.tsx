@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { login } from "@/features/auth/api";
 import { loginSchema, type LoginFormValues } from "@/features/auth/schema";
-import { storeSession } from "@/features/auth/session";
+import { storeSession } from "@/shared/auth/session";
 
 export function LoginForm() {
   const router = useRouter();

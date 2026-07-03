@@ -1,5 +1,5 @@
+import { getAccessToken } from "@/shared/auth/session";
 import { env } from "@/lib/env";
-import { getAccessToken } from "@/features/auth/session";
 
 export type ApiEnvelope<T> = {
   success: boolean;

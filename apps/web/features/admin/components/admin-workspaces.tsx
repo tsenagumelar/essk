@@ -4,59 +4,19 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronDown, Download, FileText, Filter, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { Dispatch, FormEvent, SetStateAction, useState } from "react";
 import {
-  createRole,
   createTenant,
-  createUser,
-  deleteRole,
   deleteTenant,
-  deleteUser,
-  listRoles,
   listTenants,
-  listUsers,
-  updateRole,
   updateTenant,
-  updateUser,
-  type AdminUser,
-  type Role,
   type Tenant,
-} from "@/features/admin/api";
-import { ConfirmationDialog } from "@/features/shared/components/confirmation-dialog";
-
-type PendingAction = {
-  title: string;
-  description: string;
-  confirmLabel: string;
-  variant?: "primary" | "danger";
-  run: () => Promise<unknown>;
-};
+} from "@/features/tenants/api";
+import { createUser, deleteUser, listUsers, updateUser, type AdminUser } from "@/features/users/api";
+import { createRole, deleteRole, listRoles, updateRole, type Role } from "@/features/roles/api";
+import { useConfirmableAction } from "@/shared/hooks/use-confirmable-action";
+import { exportExcel } from "@/shared/utils/export-excel";
+import { printPdf } from "@/shared/utils/print-pdf";
 
 const pageSizeOptions = [5, 10, 20];
-
-function useConfirmableAction() {
-  const [pending, setPending] = useState<PendingAction | null>(null);
-  return {
-    pending,
-    request: setPending,
-    dialog: (isLoading = false) => (
-      <ConfirmationDialog
-        open={Boolean(pending)}
-        title={pending?.title ?? ""}
-        description={pending?.description ?? ""}
-        confirmLabel={pending?.confirmLabel ?? "Confirm"}
-        variant={pending?.variant ?? "primary"}
-        isLoading={isLoading}
-        onCancel={() => setPending(null)}
-        onConfirm={async () => {
-          if (!pending) {
-            return;
-          }
-          await pending.run();
-          setPending(null);
-        }}
-      />
-    ),
-  };
-}
 
 function Modal({
   title,
@@ -227,7 +187,7 @@ export function TenantsWorkspace() {
           </>
         }
         onExportExcel={() => exportExcel("tenants.xls", ["Name", "Slug", "Status", "Active"], filtered.map((tenant) => [tenant.name, tenant.slug, tenant.status, tenant.is_active ? "Yes" : "No"]))}
-        onExportPdf={exportPdf}
+        onExportPdf={printPdf}
       >
         <DataTable
           headers={["Name", "Slug", "Status", "Active", "Actions"]}
@@ -383,7 +343,7 @@ export function UsersWorkspace() {
             ]),
           )
         }
-        onExportPdf={exportPdf}
+        onExportPdf={printPdf}
       >
         <DataTable
           headers={["Name", "Email", "Tenant", "Roles", "Status", "Active", "Actions"]}
@@ -537,7 +497,7 @@ export function RolesWorkspace() {
             ]),
           )
         }
-        onExportPdf={exportPdf}
+        onExportPdf={printPdf}
       >
         <DataTable
           headers={["Name", "Code", "Tenant", "System", "Active", "Actions"]}
@@ -848,37 +808,4 @@ function paginate<T>(items: T[], page: number, pageSize = 10) {
     page: normalizedPage,
     totalPages,
   };
-}
-
-function exportExcel(filename: string, headers: string[], rows: Array<Array<string | number | boolean>>) {
-  const workbook = `
-    <table>
-      <thead>
-        <tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr>
-      </thead>
-      <tbody>
-        ${rows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(String(cell))}</td>`).join("")}</tr>`).join("")}
-      </tbody>
-    </table>
-  `;
-  const blob = new Blob([workbook], { type: "application/vnd.ms-excel" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
-function exportPdf() {
-  window.print();
-}
-
-function escapeHtml(value: string) {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
 }
