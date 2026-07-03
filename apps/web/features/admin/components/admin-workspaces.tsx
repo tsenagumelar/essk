@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, ChevronDown, Download, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { Check, ChevronDown, Download, FileText, Filter, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { Dispatch, FormEvent, SetStateAction, useState } from "react";
 import {
   createRole,
@@ -29,6 +29,8 @@ type PendingAction = {
   variant?: "primary" | "danger";
   run: () => Promise<unknown>;
 };
+
+const pageSizeOptions = [5, 10, 20];
 
 function useConfirmableAction() {
   const [pending, setPending] = useState<PendingAction | null>(null);
@@ -87,7 +89,8 @@ function PageShell({
   onSearch,
   onAdd,
   filters,
-  onExport,
+  onExportExcel,
+  onExportPdf,
   children,
 }: Readonly<{
   title: string;
@@ -96,35 +99,50 @@ function PageShell({
   onSearch: (value: string) => void;
   onAdd: () => void;
   filters?: React.ReactNode;
-  onExport: () => void;
+  onExportExcel: () => void;
+  onExportPdf: () => void;
   children: React.ReactNode;
 }>) {
   return (
     <section className="overflow-hidden rounded-xl border bg-white shadow-sm">
-      <div className="flex flex-col gap-3 border-b bg-gradient-to-r from-white to-slate-50 px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <h2 className="text-base font-semibold">{title}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
-        </div>
-        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-          <div className="relative sm:w-72">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              className="h-10 w-full rounded-lg border bg-white pl-9 pr-3 text-sm outline-none ring-primary focus:ring-2"
-              placeholder="Search"
-              value={search}
-              onChange={(event) => onSearch(event.target.value)}
-            />
+      <div className="border-b bg-gradient-to-r from-white to-slate-50 px-4 py-4">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div>
+            <h2 className="text-base font-semibold">{title}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
           </div>
-          {filters}
-          <button className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border bg-white px-3 text-sm font-medium hover:bg-slate-50" onClick={onExport}>
-            <Download className="h-4 w-4" />
-            Export
-          </button>
-          <button className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground" onClick={onAdd}>
-            <Plus className="h-4 w-4" />
-            Add
-          </button>
+
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+            <div className="relative min-w-0 lg:w-72">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="search"
+                className="h-10 w-full rounded-lg border bg-white pl-9 pr-3 text-sm outline-none ring-primary focus:ring-2"
+                placeholder="Search records"
+                value={search}
+                onChange={(event) => onSearch(event.target.value)}
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {filters}
+              <button
+                className="inline-flex h-10 items-center gap-2 rounded-lg border bg-white px-3 text-sm font-medium hover:bg-slate-50"
+                onClick={onExportExcel}
+              >
+                <Download className="h-4 w-4" />
+                Excel
+              </button>
+              <button className="inline-flex h-10 items-center gap-2 rounded-lg border bg-white px-3 text-sm font-medium hover:bg-slate-50" onClick={onExportPdf}>
+                <FileText className="h-4 w-4" />
+                PDF
+              </button>
+              <button className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-95" onClick={onAdd}>
+                <Plus className="h-4 w-4" />
+                Add
+              </button>
+            </div>
+          </div>
         </div>
       </div>
       {children}
@@ -141,6 +159,7 @@ export function TenantsWorkspace() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [activeFilter, setActiveFilter] = useState("all");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [form, setForm] = useState({ name: "", slug: "", status: "active", is_active: true });
   const tenantsQuery = useQuery({ queryKey: ["tenants"], queryFn: listTenants });
   const tenants = tenantsQuery.data ?? [];
@@ -150,7 +169,10 @@ export function TenantsWorkspace() {
     const matchesActive = activeFilter === "all" || String(tenant.is_active) === activeFilter;
     return matchesSearch && matchesStatus && matchesActive;
   });
-  const paginated = paginate(filtered, page);
+  const paginated = paginate(filtered, page, pageSize);
+  const activeCount = filtered.filter((tenant) => tenant.is_active).length;
+  const firstRecord = filtered.length === 0 ? 0 : (paginated.page - 1) * pageSize + 1;
+  const lastRecord = Math.min(paginated.page * pageSize, filtered.length);
   const saveMutation = useMutation({
     mutationFn: async () =>
       editing
@@ -191,7 +213,7 @@ export function TenantsWorkspace() {
     <>
       <PageShell
         title="Tenants"
-        subtitle="Super admin can manage all tenants."
+        subtitle={`${filtered.length} records, ${activeCount} active`}
         search={search}
         onSearch={(value) => {
           setSearch(value);
@@ -200,11 +222,12 @@ export function TenantsWorkspace() {
         onAdd={() => openForm()}
         filters={
           <>
-            <FilterSelect label="Status" value={statusFilter} onChange={(value) => { setStatusFilter(value); setPage(1); }} options={[{ value: "all", label: "All status" }, { value: "active", label: "Active" }, { value: "inactive", label: "Inactive" }]} />
+            <FilterSelect withIcon label="Status" value={statusFilter} onChange={(value) => { setStatusFilter(value); setPage(1); }} options={[{ value: "all", label: "All status" }, { value: "active", label: "Active" }, { value: "inactive", label: "Inactive" }]} />
             <FilterSelect label="Active" value={activeFilter} onChange={(value) => { setActiveFilter(value); setPage(1); }} options={[{ value: "all", label: "All active" }, { value: "true", label: "Yes" }, { value: "false", label: "No" }]} />
           </>
         }
-        onExport={() => exportCsv("tenants.csv", ["Name", "Slug", "Status", "Active"], filtered.map((tenant) => [tenant.name, tenant.slug, tenant.status, tenant.is_active ? "Yes" : "No"]))}
+        onExportExcel={() => exportExcel("tenants.xls", ["Name", "Slug", "Status", "Active"], filtered.map((tenant) => [tenant.name, tenant.slug, tenant.status, tenant.is_active ? "Yes" : "No"]))}
+        onExportPdf={exportPdf}
       >
         <DataTable
           headers={["Name", "Slug", "Status", "Active", "Actions"]}
@@ -229,7 +252,19 @@ export function TenantsWorkspace() {
           ])}
           loading={tenantsQuery.isLoading}
         />
-        <Pagination page={paginated.page} totalPages={paginated.totalPages} totalItems={filtered.length} onPageChange={setPage} />
+        <Pagination
+          page={paginated.page}
+          pageSize={pageSize}
+          totalPages={paginated.totalPages}
+          totalItems={filtered.length}
+          firstRecord={firstRecord}
+          lastRecord={lastRecord}
+          onPageChange={setPage}
+          onPageSizeChange={(value) => {
+            setPageSize(value);
+            setPage(1);
+          }}
+        />
       </PageShell>
       {isOpen ? (
         <Modal title={editing ? "Edit Tenant" : "Create Tenant"} subtitle="Manage tenant master data." onClose={() => setIsOpen(false)}>
@@ -256,6 +291,7 @@ export function UsersWorkspace() {
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [form, setForm] = useState({ tenant_id: "", email: "", name: "", password: "Admin123!", status: "active", is_active: true, role_ids: [] as string[] });
   const tenantsQuery = useQuery({ queryKey: ["tenants"], queryFn: listTenants });
   const rolesQuery = useQuery({ queryKey: ["roles"], queryFn: () => listRoles() });
@@ -275,7 +311,10 @@ export function UsersWorkspace() {
     const matchesStatus = statusFilter === "all" || user.status === statusFilter;
     return matchesSearch && matchesTenant && matchesRole && matchesStatus;
   });
-  const paginated = paginate(filtered, page);
+  const paginated = paginate(filtered, page, pageSize);
+  const activeCount = filtered.filter((user) => user.is_active).length;
+  const firstRecord = filtered.length === 0 ? 0 : (paginated.page - 1) * pageSize + 1;
+  const lastRecord = Math.min(paginated.page * pageSize, filtered.length);
   const saveMutation = useMutation({
     mutationFn: async () =>
       editing
@@ -316,7 +355,7 @@ export function UsersWorkspace() {
     <>
       <PageShell
         title="Users"
-        subtitle="Super admin sees all users; tenant admins are scoped to their tenant."
+        subtitle={`${filtered.length} records, ${activeCount} active`}
         search={search}
         onSearch={(value) => {
           setSearch(value);
@@ -325,14 +364,14 @@ export function UsersWorkspace() {
         onAdd={() => openForm()}
         filters={
           <>
-            <FilterSelect label="Tenant" value={tenantFilter} onChange={(value) => { setTenantFilter(value); setPage(1); }} options={[{ value: "all", label: "All tenants" }, ...tenants.map((tenant) => ({ value: tenant.id, label: tenant.name }))]} />
+            <FilterSelect withIcon label="Tenant" value={tenantFilter} onChange={(value) => { setTenantFilter(value); setPage(1); }} options={[{ value: "all", label: "All tenants" }, ...tenants.map((tenant) => ({ value: tenant.id, label: tenant.name }))]} />
             <FilterSelect label="Role" value={roleFilter} onChange={(value) => { setRoleFilter(value); setPage(1); }} options={[{ value: "all", label: "All roles" }, ...roles.map((role) => ({ value: role.id, label: `${role.name} (${role.code})` }))]} />
             <FilterSelect label="Status" value={statusFilter} onChange={(value) => { setStatusFilter(value); setPage(1); }} options={[{ value: "all", label: "All status" }, { value: "active", label: "Active" }, { value: "inactive", label: "Inactive" }, { value: "invited", label: "Invited" }, { value: "suspended", label: "Suspended" }]} />
           </>
         }
-        onExport={() =>
-          exportCsv(
-            "users.csv",
+        onExportExcel={() =>
+          exportExcel(
+            "users.xls",
             ["Name", "Email", "Tenant", "Roles", "Status", "Active"],
             filtered.map((user) => [
               user.name,
@@ -344,6 +383,7 @@ export function UsersWorkspace() {
             ]),
           )
         }
+        onExportPdf={exportPdf}
       >
         <DataTable
           headers={["Name", "Email", "Tenant", "Roles", "Status", "Active", "Actions"]}
@@ -370,7 +410,19 @@ export function UsersWorkspace() {
           ])}
           loading={usersQuery.isLoading}
         />
-        <Pagination page={paginated.page} totalPages={paginated.totalPages} totalItems={filtered.length} onPageChange={setPage} />
+        <Pagination
+          page={paginated.page}
+          pageSize={pageSize}
+          totalPages={paginated.totalPages}
+          totalItems={filtered.length}
+          firstRecord={firstRecord}
+          lastRecord={lastRecord}
+          onPageChange={setPage}
+          onPageSizeChange={(value) => {
+            setPageSize(value);
+            setPage(1);
+          }}
+        />
       </PageShell>
       {isOpen ? (
         <Modal title={editing ? "Edit User" : "Create User"} subtitle="Manage tenant user account and roles." onClose={() => setIsOpen(false)}>
@@ -400,6 +452,7 @@ export function RolesWorkspace() {
   const [systemFilter, setSystemFilter] = useState("all");
   const [activeFilter, setActiveFilter] = useState("all");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [form, setForm] = useState({ tenant_id: "", name: "", code: "", description: "", is_system: false, is_active: true });
   const tenantsQuery = useQuery({ queryKey: ["tenants"], queryFn: listTenants });
   const rolesQuery = useQuery({ queryKey: ["roles"], queryFn: () => listRoles() });
@@ -413,7 +466,10 @@ export function RolesWorkspace() {
     const matchesActive = activeFilter === "all" || String(role.is_active) === activeFilter;
     return matchesSearch && matchesTenant && matchesSystem && matchesActive;
   });
-  const paginated = paginate(filtered, page);
+  const paginated = paginate(filtered, page, pageSize);
+  const activeCount = filtered.filter((role) => role.is_active).length;
+  const firstRecord = filtered.length === 0 ? 0 : (paginated.page - 1) * pageSize + 1;
+  const lastRecord = Math.min(paginated.page * pageSize, filtered.length);
   const saveMutation = useMutation({
     mutationFn: async () =>
       editing
@@ -454,7 +510,7 @@ export function RolesWorkspace() {
     <>
       <PageShell
         title="Roles"
-        subtitle="Manage global and tenant scoped roles."
+        subtitle={`${filtered.length} records, ${activeCount} active`}
         search={search}
         onSearch={(value) => {
           setSearch(value);
@@ -463,14 +519,14 @@ export function RolesWorkspace() {
         onAdd={() => openForm()}
         filters={
           <>
-            <FilterSelect label="Tenant" value={tenantFilter} onChange={(value) => { setTenantFilter(value); setPage(1); }} options={[{ value: "all", label: "All tenants" }, { value: "global", label: "Global" }, ...tenants.map((tenant) => ({ value: tenant.id, label: tenant.name }))]} />
+            <FilterSelect withIcon label="Tenant" value={tenantFilter} onChange={(value) => { setTenantFilter(value); setPage(1); }} options={[{ value: "all", label: "All tenants" }, { value: "global", label: "Global" }, ...tenants.map((tenant) => ({ value: tenant.id, label: tenant.name }))]} />
             <FilterSelect label="System" value={systemFilter} onChange={(value) => { setSystemFilter(value); setPage(1); }} options={[{ value: "all", label: "All system" }, { value: "true", label: "Yes" }, { value: "false", label: "No" }]} />
             <FilterSelect label="Active" value={activeFilter} onChange={(value) => { setActiveFilter(value); setPage(1); }} options={[{ value: "all", label: "All active" }, { value: "true", label: "Yes" }, { value: "false", label: "No" }]} />
           </>
         }
-        onExport={() =>
-          exportCsv(
-            "roles.csv",
+        onExportExcel={() =>
+          exportExcel(
+            "roles.xls",
             ["Name", "Code", "Tenant", "System", "Active"],
             filtered.map((role) => [
               role.name,
@@ -481,6 +537,7 @@ export function RolesWorkspace() {
             ]),
           )
         }
+        onExportPdf={exportPdf}
       >
         <DataTable
           headers={["Name", "Code", "Tenant", "System", "Active", "Actions"]}
@@ -506,7 +563,19 @@ export function RolesWorkspace() {
           ])}
           loading={rolesQuery.isLoading}
         />
-        <Pagination page={paginated.page} totalPages={paginated.totalPages} totalItems={filtered.length} onPageChange={setPage} />
+        <Pagination
+          page={paginated.page}
+          pageSize={pageSize}
+          totalPages={paginated.totalPages}
+          totalItems={filtered.length}
+          firstRecord={firstRecord}
+          lastRecord={lastRecord}
+          onPageChange={setPage}
+          onPageSizeChange={(value) => {
+            setPageSize(value);
+            setPage(1);
+          }}
+        />
       </PageShell>
       {isOpen ? (
         <Modal title={editing ? "Edit Role" : "Create Role"} subtitle="Manage RBAC role master data." onClose={() => setIsOpen(false)}>
@@ -546,33 +615,56 @@ function DataTable({ headers, rows, loading }: Readonly<{ headers: string[]; row
 
 function Pagination({
   page,
+  pageSize,
   totalPages,
   totalItems,
+  firstRecord,
+  lastRecord,
   onPageChange,
-}: Readonly<{ page: number; totalPages: number; totalItems: number; onPageChange: (page: number) => void }>) {
-  if (totalItems === 0) {
-    return null;
-  }
-
+  onPageSizeChange,
+}: Readonly<{
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  totalItems: number;
+  firstRecord: number;
+  lastRecord: number;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (pageSize: number) => void;
+}>) {
   return (
-    <div className="flex flex-col gap-3 border-t px-4 py-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 border-t px-4 py-3 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
       <p>
-        Page {page} of {totalPages} · {totalItems} records
+        Showing {firstRecord}-{lastRecord} of {totalItems}
       </p>
-      <div className="flex gap-2">
-        <button
-          type="button"
-          className="rounded-lg border bg-white px-3 py-2 font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
-          disabled={page <= 1}
-          onClick={() => onPageChange(page - 1)}
+      <div className="flex items-center gap-2">
+        <select
+          className="h-9 rounded-lg border bg-white px-2 text-sm outline-none"
+          value={pageSize}
+          onChange={(event) => onPageSizeChange(Number(event.target.value))}
         >
-          Previous
-        </button>
+          {pageSizeOptions.map((size) => (
+            <option key={size} value={size}>
+              {size} / page
+            </option>
+          ))}
+        </select>
         <button
           type="button"
-          className="rounded-lg border bg-white px-3 py-2 font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+          className="h-9 rounded-lg border bg-white px-3 disabled:opacity-50"
+          disabled={page <= 1}
+          onClick={() => onPageChange(Math.max(1, page - 1))}
+        >
+          Prev
+        </button>
+        <span className="px-2">
+          Page {page} of {totalPages}
+        </span>
+        <button
+          type="button"
+          className="h-9 rounded-lg border bg-white px-3 disabled:opacity-50"
           disabled={page >= totalPages}
-          onClick={() => onPageChange(page + 1)}
+          onClick={() => onPageChange(Math.min(totalPages, page + 1))}
         >
           Next
         </button>
@@ -598,23 +690,38 @@ function FilterSelect({
   label,
   value,
   options,
+  withIcon,
   onChange,
-}: Readonly<{ label: string; value: string; options: { value: string; label: string }[]; onChange: (value: string) => void }>) {
+}: Readonly<{ label: string; value: string; options: { value: string; label: string }[]; withIcon?: boolean; onChange: (value: string) => void }>) {
+  const select = (
+    <select
+      aria-label={label}
+      className={withIcon ? "bg-transparent text-sm outline-none" : "h-10 rounded-lg border bg-white px-3 text-sm outline-none ring-primary focus:ring-2"}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+    >
+      {options.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
+  );
+
+  if (withIcon) {
+    return (
+      <div className="flex h-10 items-center gap-2 rounded-lg border bg-white px-3">
+        <Filter className="h-4 w-4 text-muted-foreground" />
+        {select}
+      </div>
+    );
+  }
+
   return (
-    <label className="sr-only">
-      {label}
-      <select
-        className="not-sr-only h-10 rounded-lg border bg-white px-3 text-sm outline-none ring-primary focus:ring-2"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </label>
+    <>
+      <span className="sr-only">{label}</span>
+      {select}
+    </>
   );
 }
 
@@ -743,20 +850,35 @@ function paginate<T>(items: T[], page: number, pageSize = 10) {
   };
 }
 
-function exportCsv(filename: string, headers: string[], rows: Array<Array<string | number | boolean>>) {
-  const csv = [headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+function exportExcel(filename: string, headers: string[], rows: Array<Array<string | number | boolean>>) {
+  const workbook = `
+    <table>
+      <thead>
+        <tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr>
+      </thead>
+      <tbody>
+        ${rows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(String(cell))}</td>`).join("")}</tr>`).join("")}
+      </tbody>
+    </table>
+  `;
+  const blob = new Blob([workbook], { type: "application/vnd.ms-excel" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
   link.download = filename;
-  document.body.appendChild(link);
   link.click();
-  link.remove();
   URL.revokeObjectURL(url);
 }
 
-function csvCell(value: string | number | boolean) {
-  const raw = String(value);
-  return `"${raw.replaceAll('"', '""')}"`;
+function exportPdf() {
+  window.print();
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
