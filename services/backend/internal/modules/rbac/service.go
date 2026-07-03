@@ -52,15 +52,18 @@ func (s Service) ListRoles(ctx context.Context, tenantID *uuid.UUID) ([]RoleResp
 	return result, nil
 }
 
-func (s Service) GetRole(ctx context.Context, id uuid.UUID) (RoleResponse, error) {
+func (s Service) GetRole(ctx context.Context, id uuid.UUID, scopeTenantID *uuid.UUID) (RoleResponse, error) {
 	role, err := s.repo.GetRole(ctx, id)
 	if err != nil {
 		return RoleResponse{}, mapNotFound(err)
 	}
+	if err := requireRoleScope(role, scopeTenantID); err != nil {
+		return RoleResponse{}, err
+	}
 	return toRoleResponse(role), nil
 }
 
-func (s Service) CreateRole(ctx context.Context, req CreateRoleRequest, actorID uuid.UUID) (RoleResponse, error) {
+func (s Service) CreateRole(ctx context.Context, req CreateRoleRequest, scopeTenantID *uuid.UUID, actorID uuid.UUID) (RoleResponse, error) {
 	var tenantID *uuid.UUID
 	if req.TenantID != nil && *req.TenantID != "" {
 		parsed, err := uuid.Parse(*req.TenantID)
@@ -68,6 +71,12 @@ func (s Service) CreateRole(ctx context.Context, req CreateRoleRequest, actorID 
 			return RoleResponse{}, apperrors.New("VALIDATION_ERROR", fiber.StatusBadRequest, "Invalid tenant_id")
 		}
 		tenantID = &parsed
+	}
+	if scopeTenantID != nil {
+		if tenantID != nil && *tenantID != *scopeTenantID {
+			return RoleResponse{}, apperrors.New("FORBIDDEN", fiber.StatusForbidden, "Forbidden")
+		}
+		tenantID = scopeTenantID
 	}
 
 	role := Role{
@@ -87,10 +96,13 @@ func (s Service) CreateRole(ctx context.Context, req CreateRoleRequest, actorID 
 	return toRoleResponse(role), nil
 }
 
-func (s Service) UpdateRole(ctx context.Context, id uuid.UUID, req UpdateRoleRequest, actorID uuid.UUID) (RoleResponse, error) {
+func (s Service) UpdateRole(ctx context.Context, id uuid.UUID, req UpdateRoleRequest, scopeTenantID *uuid.UUID, actorID uuid.UUID) (RoleResponse, error) {
 	role, err := s.repo.GetRole(ctx, id)
 	if err != nil {
 		return RoleResponse{}, mapNotFound(err)
+	}
+	if err := requireRoleScope(role, scopeTenantID); err != nil {
+		return RoleResponse{}, err
 	}
 
 	role.Name = req.Name
@@ -104,7 +116,14 @@ func (s Service) UpdateRole(ctx context.Context, id uuid.UUID, req UpdateRoleReq
 	return toRoleResponse(role), nil
 }
 
-func (s Service) DeleteRole(ctx context.Context, id uuid.UUID, actorID uuid.UUID) error {
+func (s Service) DeleteRole(ctx context.Context, id uuid.UUID, scopeTenantID *uuid.UUID, actorID uuid.UUID) error {
+	role, err := s.repo.GetRole(ctx, id)
+	if err != nil {
+		return mapNotFound(err)
+	}
+	if err := requireRoleScope(role, scopeTenantID); err != nil {
+		return err
+	}
 	if err := mapNotFound(s.repo.DeleteRole(ctx, id, actorID, s.now().UTC())); err != nil {
 		return err
 	}
@@ -173,6 +192,16 @@ func mapNotFound(err error) error {
 		return apperrors.New("NOT_FOUND", fiber.StatusNotFound, "Resource not found")
 	}
 	return err
+}
+
+func requireRoleScope(role Role, scopeTenantID *uuid.UUID) error {
+	if scopeTenantID == nil {
+		return nil
+	}
+	if role.TenantID == nil || *role.TenantID != *scopeTenantID {
+		return apperrors.New("FORBIDDEN", fiber.StatusForbidden, "Forbidden")
+	}
+	return nil
 }
 
 func toPermissionResponse(permission Permission) PermissionResponse {

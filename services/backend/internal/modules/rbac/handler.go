@@ -10,11 +10,12 @@ import (
 
 type Handler struct {
 	service   Service
+	repo      Repository
 	validator *validator.Validator
 }
 
-func NewHandler(service Service, validator *validator.Validator) Handler {
-	return Handler{service: service, validator: validator}
+func NewHandler(service Service, repo Repository, validator *validator.Validator) Handler {
+	return Handler{service: service, repo: repo, validator: validator}
 }
 
 func (h Handler) ListPermissions(c *fiber.Ctx) error {
@@ -26,6 +27,14 @@ func (h Handler) ListPermissions(c *fiber.Ctx) error {
 }
 
 func (h Handler) ListRoles(c *fiber.Ctx) error {
+	claims, scopeTenantID, isSuperAdmin, ok, err := h.scope(c)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return response.Error(c, fiber.StatusUnauthorized, "Unauthorized", nil)
+	}
+	_ = claims
 	var tenantID *uuid.UUID
 	if raw := c.Query("tenant_id"); raw != "" {
 		parsed, err := uuid.Parse(raw)
@@ -33,6 +42,9 @@ func (h Handler) ListRoles(c *fiber.Ctx) error {
 			return response.Error(c, fiber.StatusBadRequest, "Invalid tenant_id", nil)
 		}
 		tenantID = &parsed
+	}
+	if !isSuperAdmin {
+		tenantID = scopeTenantID
 	}
 
 	result, err := h.service.ListRoles(c.Context(), tenantID)
@@ -47,7 +59,14 @@ func (h Handler) GetRole(c *fiber.Ctx) error {
 	if err != nil {
 		return response.Error(c, fiber.StatusBadRequest, "Invalid role id", nil)
 	}
-	result, err := h.service.GetRole(c.Context(), id)
+	_, scopeTenantID, _, ok, err := h.scope(c)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return response.Error(c, fiber.StatusUnauthorized, "Unauthorized", nil)
+	}
+	result, err := h.service.GetRole(c.Context(), id, scopeTenantID)
 	if err != nil {
 		return err
 	}
@@ -62,12 +81,15 @@ func (h Handler) CreateRole(c *fiber.Ctx) error {
 	if validationErrors := h.validator.Struct(req); validationErrors != nil {
 		return response.Error(c, fiber.StatusBadRequest, "Validation Error", validationErrors)
 	}
-	claims, ok := authn.ClaimsFromContext(c)
+	claims, scopeTenantID, _, ok, err := h.scope(c)
+	if err != nil {
+		return err
+	}
 	if !ok {
 		return response.Error(c, fiber.StatusUnauthorized, "Unauthorized", nil)
 	}
 
-	result, err := h.service.CreateRole(c.Context(), req, claims.UserID)
+	result, err := h.service.CreateRole(c.Context(), req, scopeTenantID, claims.UserID)
 	if err != nil {
 		return err
 	}
@@ -86,12 +108,15 @@ func (h Handler) UpdateRole(c *fiber.Ctx) error {
 	if validationErrors := h.validator.Struct(req); validationErrors != nil {
 		return response.Error(c, fiber.StatusBadRequest, "Validation Error", validationErrors)
 	}
-	claims, ok := authn.ClaimsFromContext(c)
+	claims, scopeTenantID, _, ok, err := h.scope(c)
+	if err != nil {
+		return err
+	}
 	if !ok {
 		return response.Error(c, fiber.StatusUnauthorized, "Unauthorized", nil)
 	}
 
-	result, err := h.service.UpdateRole(c.Context(), id, req, claims.UserID)
+	result, err := h.service.UpdateRole(c.Context(), id, req, scopeTenantID, claims.UserID)
 	if err != nil {
 		return err
 	}
@@ -103,11 +128,14 @@ func (h Handler) DeleteRole(c *fiber.Ctx) error {
 	if err != nil {
 		return response.Error(c, fiber.StatusBadRequest, "Invalid role id", nil)
 	}
-	claims, ok := authn.ClaimsFromContext(c)
+	claims, scopeTenantID, _, ok, err := h.scope(c)
+	if err != nil {
+		return err
+	}
 	if !ok {
 		return response.Error(c, fiber.StatusUnauthorized, "Unauthorized", nil)
 	}
-	if err := h.service.DeleteRole(c.Context(), id, claims.UserID); err != nil {
+	if err := h.service.DeleteRole(c.Context(), id, scopeTenantID, claims.UserID); err != nil {
 		return err
 	}
 	return response.OK(c, "OK", fiber.Map{"deleted": true}, nil)
@@ -152,6 +180,21 @@ func (h Handler) RemovePermission(c *fiber.Ctx) error {
 		return err
 	}
 	return response.OK(c, "OK", fiber.Map{"removed": true}, nil)
+}
+
+func (h Handler) scope(c *fiber.Ctx) (authn.Claims, *uuid.UUID, bool, bool, error) {
+	claims, ok := authn.ClaimsFromContext(c)
+	if !ok {
+		return authn.Claims{}, nil, false, false, nil
+	}
+	isSuperAdmin, err := h.repo.UserHasRoleCode(c.Context(), claims.UserID, "super_admin")
+	if err != nil {
+		return authn.Claims{}, nil, false, false, err
+	}
+	if isSuperAdmin {
+		return claims, nil, true, true, nil
+	}
+	return claims, claims.TenantID, false, true, nil
 }
 
 func (h Handler) AssignRoleToUser(c *fiber.Ctx) error {

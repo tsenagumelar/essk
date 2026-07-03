@@ -26,8 +26,8 @@ func (s Service) WithAudit(auditService audit.Service) Service {
 	return s
 }
 
-func (s Service) List(ctx context.Context) ([]TenantResponse, error) {
-	tenants, err := s.repo.List(ctx)
+func (s Service) List(ctx context.Context, scopeTenantID *uuid.UUID) ([]TenantResponse, error) {
+	tenants, err := s.repo.List(ctx, scopeTenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +38,10 @@ func (s Service) List(ctx context.Context) ([]TenantResponse, error) {
 	return result, nil
 }
 
-func (s Service) Get(ctx context.Context, id uuid.UUID) (TenantResponse, error) {
+func (s Service) Get(ctx context.Context, id uuid.UUID, scopeTenantID *uuid.UUID) (TenantResponse, error) {
+	if scopeTenantID != nil && id != *scopeTenantID {
+		return TenantResponse{}, apperrors.New("FORBIDDEN", fiber.StatusForbidden, "Forbidden")
+	}
 	tenant, err := s.repo.Get(ctx, id)
 	if err != nil {
 		return TenantResponse{}, mapNotFound(err)
@@ -61,7 +64,10 @@ func (s Service) Create(ctx context.Context, req CreateTenantRequest, actorID uu
 	return toResponse(tenant), nil
 }
 
-func (s Service) Update(ctx context.Context, id uuid.UUID, req UpdateTenantRequest, actorID uuid.UUID) (TenantResponse, error) {
+func (s Service) Update(ctx context.Context, id uuid.UUID, req UpdateTenantRequest, scopeTenantID *uuid.UUID, actorID uuid.UUID) (TenantResponse, error) {
+	if scopeTenantID != nil && id != *scopeTenantID {
+		return TenantResponse{}, apperrors.New("FORBIDDEN", fiber.StatusForbidden, "Forbidden")
+	}
 	tenant, err := s.repo.Get(ctx, id)
 	if err != nil {
 		return TenantResponse{}, mapNotFound(err)

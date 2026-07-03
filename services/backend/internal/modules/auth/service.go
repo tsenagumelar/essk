@@ -289,6 +289,12 @@ func (s Service) ensureTenantRoles(ctx context.Context, tenantID *uuid.UUID, act
 	if err != nil {
 		return err
 	}
+	userReadPermissions := map[string]bool{
+		"roles:read":    true,
+		"tenants:read":  true,
+		"users:read":    true,
+		"products:read": true,
+	}
 
 	for _, permission := range permissions {
 		storedPermission, err := s.rbacRepo.FindPermissionByCode(ctx, permission.Code)
@@ -298,7 +304,7 @@ func (s Service) ensureTenantRoles(ctx context.Context, tenantID *uuid.UUID, act
 		if err := s.rbacRepo.AssignPermission(ctx, adminRole.ID, storedPermission.ID, actorID, now); err != nil {
 			return err
 		}
-		if permission.Code == "products:read" {
+		if userReadPermissions[permission.Code] {
 			if err := s.rbacRepo.AssignPermission(ctx, userRole.ID, storedPermission.ID, actorID, now); err != nil {
 				return err
 			}

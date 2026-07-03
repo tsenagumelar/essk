@@ -50,6 +50,24 @@ func (r Repository) UserHasPermission(ctx context.Context, userID uuid.UUID, per
 	return exists, err
 }
 
+func (r Repository) UserHasRoleCode(ctx context.Context, userID uuid.UUID, roleCode string) (bool, error) {
+	var exists bool
+	err := r.db.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM user_roles ur
+			JOIN roles ro ON ro.id = ur.role_id
+			WHERE ur.user_id = $1
+				AND ro.code = $2
+				AND ur.is_active = true
+				AND ur.is_deleted = false
+				AND ro.is_active = true
+				AND ro.is_deleted = false
+		)
+	`, userID, roleCode).Scan(&exists)
+	return exists, err
+}
+
 func RoleAppliesToUserTenant(userTenantID *uuid.UUID, roleTenantID *uuid.UUID) bool {
 	if roleTenantID == nil {
 		return true

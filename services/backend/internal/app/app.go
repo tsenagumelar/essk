@@ -162,7 +162,7 @@ func (a *App) registerRoutes() {
 		product.RegisterRoutes(api, productHandler, tokenService, rbacRepo)
 
 		rbacService := rbac.NewService(rbacRepo).WithAudit(auditService)
-		rbacHandler := rbac.NewHandler(rbacService, appvalidator.New())
+		rbacHandler := rbac.NewHandler(rbacService, rbacRepo, appvalidator.New())
 		rbac.RegisterRoutes(api, rbacHandler, tokenService, rbacRepo)
 
 		userAdminRepo := useradmin.NewRepository(a.db)
@@ -172,7 +172,7 @@ func (a *App) registerRoutes() {
 
 		tenantRepo := tenantmodule.NewRepository(a.db)
 		tenantService := tenantmodule.NewService(tenantRepo).WithAudit(auditService)
-		tenantHandler := tenantmodule.NewHandler(tenantService, appvalidator.New())
+		tenantHandler := tenantmodule.NewHandler(tenantService, rbacRepo, appvalidator.New())
 		tenantmodule.RegisterRoutes(api, tenantHandler, tokenService, rbacRepo)
 	}
 }

@@ -20,13 +20,14 @@ func NewRepository(db *pgxpool.Pool) Repository {
 	return Repository{db: db}
 }
 
-func (r Repository) List(ctx context.Context) ([]Tenant, error) {
+func (r Repository) List(ctx context.Context, tenantID *uuid.UUID) ([]Tenant, error) {
 	rows, err := r.db.Query(ctx, `
 		SELECT id, name, slug, status, is_active
 		FROM tenants
 		WHERE is_deleted = false
+			AND ($1::uuid IS NULL OR id = $1)
 		ORDER BY name ASC
-	`)
+	`, tenantID)
 	if err != nil {
 		return nil, err
 	}
