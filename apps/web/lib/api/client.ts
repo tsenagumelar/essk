@@ -21,6 +21,8 @@ export class ApiError extends Error {
   }
 }
 
+export const unauthorizedEventName = "essk:unauthorized";
+
 export async function apiGet<T>(path: string): Promise<T> {
   return apiRequest<T>(path, { method: "GET" });
 }
@@ -59,8 +61,18 @@ async function apiRequest<T>(path: string, init: RequestInit): Promise<T> {
   const envelope = (await response.json()) as ApiEnvelope<T>;
 
   if (!response.ok || !envelope.success) {
+    if (response.status === 401) {
+      notifyUnauthorized();
+    }
     throw new ApiError(envelope.message || "API request failed", response.status, envelope.errors);
   }
 
   return envelope.data as T;
+}
+
+function notifyUnauthorized() {
+  if (typeof window === "undefined" || window.location.pathname === "/login") {
+    return;
+  }
+  window.dispatchEvent(new Event(unauthorizedEventName));
 }

@@ -22,6 +22,7 @@ import { useEffect, useMemo, useState } from "react";
 import { listRoles, listTenants, listUsers } from "@/features/admin/api";
 import { clearSession, getAccessToken, getStoredUser } from "@/features/auth/session";
 import { ConfirmationDialog } from "@/features/shared/components/confirmation-dialog";
+import { unauthorizedEventName } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 
 const navGroups = [
@@ -51,6 +52,7 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
+  const [isReloginOpen, setIsReloginOpen] = useState(false);
   const [user, setUser] = useState<ReturnType<typeof getStoredUser>>(null);
   const tenantsQuery = useQuery({ queryKey: ["tenants"], queryFn: listTenants, enabled: isReady });
   const rolesQuery = useQuery({ queryKey: ["roles"], queryFn: () => listRoles(), enabled: isReady });
@@ -65,6 +67,15 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
     setUser(getStoredUser());
     setIsReady(true);
   }, [router]);
+
+  useEffect(() => {
+    function handleUnauthorized() {
+      setIsReloginOpen(true);
+    }
+
+    window.addEventListener(unauthorizedEventName, handleUnauthorized);
+    return () => window.removeEventListener(unauthorizedEventName, handleUnauthorized);
+  }, []);
 
   const initials = useMemo(() => {
     const source = user?.name || user?.email || "User";
@@ -96,6 +107,12 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
 
   function logout() {
     setIsLogoutConfirmOpen(false);
+    clearSession();
+    router.replace("/login");
+  }
+
+  function closeReloginDialog() {
+    setIsReloginOpen(false);
     clearSession();
     router.replace("/login");
   }
@@ -282,6 +299,14 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
         variant="danger"
         onCancel={() => setIsLogoutConfirmOpen(false)}
         onConfirm={logout}
+      />
+      <ConfirmationDialog
+        open={isReloginOpen}
+        title="Please relogin"
+        description="Your session is no longer valid. Close this dialog to return to the login page."
+        confirmLabel="Close"
+        onCancel={closeReloginDialog}
+        onConfirm={closeReloginDialog}
       />
     </div>
   );
