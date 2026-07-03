@@ -43,7 +43,8 @@ export function LoginForm() {
         <input
           id="email"
           type="email"
-          className="mt-1 w-full rounded-md border px-3 py-2 text-sm outline-none ring-primary focus:ring-2"
+          className="mt-1 h-11 w-full rounded-md border px-3 py-2 text-sm outline-none ring-primary focus:ring-2"
+          placeholder="admin@essk.local"
           {...register("email")}
         />
         {errors.email ? <p className="mt-1 text-xs text-destructive">{errors.email.message}</p> : null}
@@ -56,7 +57,8 @@ export function LoginForm() {
         <input
           id="password"
           type="password"
-          className="mt-1 w-full rounded-md border px-3 py-2 text-sm outline-none ring-primary focus:ring-2"
+          className="mt-1 h-11 w-full rounded-md border px-3 py-2 text-sm outline-none ring-primary focus:ring-2"
+          placeholder="Admin123!"
           {...register("password")}
         />
         {errors.password ? <p className="mt-1 text-xs text-destructive">{errors.password.message}</p> : null}
@@ -67,7 +69,7 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={isSubmitting || mutation.isPending}
-        className="w-full rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
+        className="h-11 w-full rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
       >
         {isSubmitting || mutation.isPending ? "Signing in..." : "Sign in"}
       </button>
