@@ -28,5 +28,6 @@ func printUsage() {
 	fmt.Println("Usage:")
 	fmt.Println("  essk policy check [--all|--staged]")
 	fmt.Println("  essk migrate up|down|version")
+	fmt.Println("  essk migrate shared up|down|version")
 	fmt.Println("  essk seed admin")
 }

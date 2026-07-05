@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "pnpm dev:up",
     "dev:up": "docker compose -f infra/compose/docker-compose.yml up --build",
+    "dev:backend": "docker compose -f infra/compose/docker-compose.yml up -d --build postgres redis migrate migrate-shared seed backend",
+    "dev:web": "NEXT_PUBLIC_API_BASE_URL=http://localhost:18080/api/v1 pnpm --filter @essk/web dev",
     "dev:edge": "docker compose -f infra/compose/docker-compose.yml --profile edge up --build",
     "dev:down": "docker compose -f infra/compose/docker-compose.yml down",
     "dev:logs": "docker compose -f infra/compose/docker-compose.yml logs -f",

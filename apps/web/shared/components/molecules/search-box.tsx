@@ -12,11 +12,11 @@ type SearchBoxProps = {
 
 export function SearchBox({ value, placeholder = "Search records", className, onChange }: SearchBoxProps) {
   return (
-    <div className={cn("relative min-w-0", className)}>
-      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+    <div className={cn("flex h-10 min-w-0 items-center gap-2 rounded-lg border bg-white px-3 ring-primary focus-within:ring-2", className)}>
+      <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
       <input
         type="search"
-        className="h-10 w-full rounded-lg border bg-white pl-9 pr-3 text-sm outline-none ring-primary focus:ring-2"
+        className="h-full min-w-0 flex-1 border-0 bg-transparent p-0 text-sm leading-none outline-none placeholder:text-muted-foreground"
         placeholder={placeholder}
         value={value}
         onChange={(event) => onChange(event.target.value)}

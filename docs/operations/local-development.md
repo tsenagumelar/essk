@@ -11,7 +11,7 @@
 
 ```text
 cd services/backend
-go run ./cmd/server
+go run ./services/api-gateway
 ```
 
 ## Frontend
@@ -19,6 +19,24 @@ go run ./cmd/server
 ```text
 pnpm --filter @essk/web dev
 ```
+
+## Backend in Docker, Web Local
+
+Use this mode when changing the web UI and keeping PostgreSQL, Redis, migrations, seed, and API Gateway in Docker.
+
+Terminal 1:
+
+```text
+pnpm dev:backend
+```
+
+Terminal 2:
+
+```text
+pnpm dev:web
+```
+
+This keeps the web service out of Docker, so port `3000` is owned only by the local Next.js dev server.
 
 ## Docker Compose
 

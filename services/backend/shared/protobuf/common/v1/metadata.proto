@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package essk.common.v1;
+
+option go_package = "github.com/tsenagumelar/essk/services/backend/shared/protobuf/gen/common/v1;commonv1";
+
+message RequestContext {
+  string tenant_id = 1;
+  string actor_id = 2;
+  string correlation_id = 3;
+  repeated string permissions = 4;
+}
+
+message PageRequest {
+  int32 page = 1;
+  int32 page_size = 2;
+  string search = 3;
+}
+
+message PageResponse {
+  int32 page = 1;
+  int32 page_size = 2;
+  int64 total_items = 3;
+}

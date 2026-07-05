@@ -26,23 +26,40 @@ export function CrudToolbar({
   onExportPdf,
 }: CrudToolbarProps) {
   return (
-    <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-      <SearchBox className="lg:w-72" value={search} placeholder={searchPlaceholder} onChange={onSearch} />
+    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-slate-50/80 p-3">
+      <div className="flex min-w-max items-center justify-between gap-6">
+        <SearchBox
+          className="w-[520px] shrink-0"
+          value={search}
+          placeholder={searchPlaceholder}
+          onChange={onSearch}
+        />
 
-      <div className="flex flex-wrap gap-2">
-        {filters}
-        <Button type="button" variant="outline" onClick={onExportExcel}>
-          <Download className="h-4 w-4" />
-          Excel
-        </Button>
-        <Button type="button" variant="outline" onClick={onExportPdf}>
-          <FileText className="h-4 w-4" />
-          PDF
-        </Button>
-        <Button type="button" onClick={onAdd}>
-          <Plus className="h-4 w-4" />
-          {addLabel}
-        </Button>
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          {filters}
+          <Button
+            className="shrink-0"
+            type="button"
+            variant="outline"
+            onClick={onExportExcel}
+          >
+            <Download className="h-4 w-4" />
+            Excel
+          </Button>
+          <Button
+            className="shrink-0"
+            type="button"
+            variant="outline"
+            onClick={onExportPdf}
+          >
+            <FileText className="h-4 w-4" />
+            PDF
+          </Button>
+          <Button className="shrink-0" type="button" onClick={onAdd}>
+            <Plus className="h-4 w-4" />
+            {addLabel}
+          </Button>
+        </div>
       </div>
     </div>
   );

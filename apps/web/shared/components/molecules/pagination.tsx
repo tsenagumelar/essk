@@ -29,26 +29,31 @@ export function Pagination({
   onPageSizeChange,
 }: PaginationProps) {
   return (
-    <div className="flex flex-col gap-3 border-t px-4 py-3 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
-      <p>
-        Showing {firstRecord}-{lastRecord} of {totalItems}
-      </p>
-      <div className="flex items-center gap-2">
-        <SelectField
-          className="h-9 w-auto"
-          value={String(pageSize)}
-          options={pageSizeOptions.map((size) => ({ value: String(size), label: `${size} / page` }))}
-          onChange={(event) => onPageSizeChange(Number(event.target.value))}
-        />
-        <Button type="button" variant="outline" size="sm" disabled={page <= 1} onClick={() => onPageChange(Math.max(1, page - 1))}>
-          Prev
-        </Button>
-        <span className="px-2">
-          Page {page} of {totalPages}
-        </span>
-        <Button type="button" variant="outline" size="sm" disabled={page >= totalPages} onClick={() => onPageChange(Math.min(totalPages, page + 1))}>
-          Next
-        </Button>
+    <div className="overflow-x-auto border-t border-slate-100 bg-white px-5 py-3 text-sm text-muted-foreground">
+      <div className="flex min-w-max items-center justify-between gap-6">
+        <div className="flex items-center gap-3">
+          <p className="font-medium text-slate-600">
+            Showing {firstRecord}-{lastRecord} of {totalItems}
+          </p>
+          <SelectField
+            className="h-9 w-28 shrink-0"
+            value={String(pageSize)}
+            options={pageSizeOptions.map((size) => ({ value: String(size), label: `${size} / page` }))}
+            onChange={(event) => onPageSizeChange(Number(event.target.value))}
+          />
+        </div>
+
+        <div className="ml-auto flex items-center gap-2">
+          <Button className="shrink-0" type="button" variant="outline" size="sm" disabled={page <= 1} onClick={() => onPageChange(Math.max(1, page - 1))}>
+            Prev
+          </Button>
+          <span className="shrink-0 px-2 text-slate-600">
+            Page {page} of {totalPages}
+          </span>
+          <Button className="shrink-0" type="button" variant="outline" size="sm" disabled={page >= totalPages} onClick={() => onPageChange(Math.min(totalPages, page + 1))}>
+            Next
+          </Button>
+        </div>
       </div>
     </div>
   );

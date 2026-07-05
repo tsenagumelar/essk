@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package essk.auth.v1;
+
+option go_package = "github.com/tsenagumelar/essk/services/backend/shared/protobuf/gen/auth/v1;authv1";
+
+import "common/v1/metadata.proto";
+
+service AuthService {
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+}
+
+message ValidateTokenRequest {
+  string access_token = 1;
+}
+
+message ValidateTokenResponse {
+  bool valid = 1;
+  essk.common.v1.RequestContext context = 2;
+}

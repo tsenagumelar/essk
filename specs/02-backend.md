@@ -23,7 +23,7 @@
 ```text
 services/backend/
   cmd/
-    server/
+    essk/
       main.go
 
   internal/
@@ -46,10 +46,97 @@ services/backend/
       permission/
       audit/
 
+    platform/
+      config/
+      helper/
+      logger/
+      service/
+
+  services/
+    api-gateway/
+      main.go
+      routes/
+      handler/
+      usecase/
+      repositories/
+    auth-service/
+      main.go
+      routes/
+      handler/
+      usecase/
+      repositories/
+    tenant-service/
+      main.go
+      routes/
+      handler/
+      usecase/
+      repositories/
+    iam-service/
+      main.go
+      routes/
+      handler/
+      usecase/
+      repositories/
+    catalog-service/
+      main.go
+      routes/
+      handler/
+      usecase/
+      repositories/
+    audit-service/
+      main.go
+      routes/
+      handler/
+      usecase/
+      repositories/
+
+  shared/
+    migrations/
+    protobuf/
+
   migrations/
   queries/
   docs/
   tests/
+```
+
+## Separated Service Direction
+
+ESSK uses a separated-service backend structure with a shared PostgreSQL database.
+
+Rules:
+
+- Each backend service has `main.go` at the service root.
+- Each service owns `routes`, `handler`, `usecase`, and `repositories`.
+- Services share one PostgreSQL database.
+- Each service owns a dedicated database schema:
+  - `auth`.
+  - `tenant`.
+  - `iam`.
+  - `catalog`.
+  - `audit`.
+  - `integration`.
+- Cross-service communication uses gRPC.
+- Shared protobuf contracts live in `services/backend/shared/protobuf`.
+- Shared service schema migrations live in `services/backend/shared/migrations`.
+- Shared runtime helpers live in `services/backend/internal/platform`.
+- The API gateway temporarily mounts existing module implementations while module internals are migrated into dedicated service schemas.
+
+Default service ports:
+
+```text
+api-gateway     HTTP 18080  gRPC 19100
+auth-service    HTTP 18110  gRPC 19110
+tenant-service  HTTP 18120  gRPC 19120
+iam-service     HTTP 18130  gRPC 19130
+catalog-service HTTP 18140  gRPC 19140
+audit-service   HTTP 18150  gRPC 19150
+```
+
+Shared migration command:
+
+```text
+go run ./cmd/essk migrate shared up
 ```
 
 ## Layering Rules

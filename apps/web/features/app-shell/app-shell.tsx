@@ -197,7 +197,7 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
           ))}
         </nav>
 
-        <div className={cn("space-y-3 border-t px-5 py-4 text-xs text-muted-foreground", isSidebarCollapsed && "px-2 text-center")}>
+        <div className={cn("space-y-3 border-t px-5 pb-6 pt-4 text-xs text-muted-foreground", isSidebarCollapsed && "px-2 text-center")}>
           {isSidebarCollapsed ? (
             <>
               <p title={`Active tenant: ${activeTenantLabel}`}>Tenant</p>
@@ -289,7 +289,7 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
           </div>
         </header>
 
-        <main className="px-4 py-6 lg:px-6">{children}</main>
+        <main className="px-4 py-6 lg:px-6 xl:px-7">{children}</main>
       </div>
 
       <ConfirmationDialog

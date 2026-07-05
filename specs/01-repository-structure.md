@@ -49,7 +49,7 @@ Admin console. It can be bootstrapped later than `apps/web`, but repository stru
 
 ### `services/backend`
 
-Main Go modular monolith service. It owns:
+Main Go backend workspace. It starts as a modular monolith and evolves into separated services. It owns:
 
 - Public HTTP API.
 - Auth flows.
@@ -58,6 +58,9 @@ Main Go modular monolith service. It owns:
 - Redis access.
 - Migrations.
 - OpenAPI docs.
+- Service-specific entrypoints under `services/backend/services/*`.
+- Shared protobuf contracts under `services/backend/shared/protobuf`.
+- Shared service schema migrations under `services/backend/shared/migrations`.
 
 ### `packages/sdk-ts`
 

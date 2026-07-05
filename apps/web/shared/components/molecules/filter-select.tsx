@@ -15,7 +15,7 @@ export function FilterSelect({ label, value, options, withIcon = false, onChange
   const select = (
     <SelectField
       aria-label={label}
-      className={withIcon ? "h-auto border-0 bg-transparent p-0 ring-0 focus:ring-0" : undefined}
+      className={withIcon ? "h-auto w-full border-0 bg-transparent p-0 ring-0 focus:ring-0" : "h-10 w-44 shrink-0"}
       value={value}
       options={options}
       onChange={(event) => onChange(event.target.value)}
@@ -27,7 +27,7 @@ export function FilterSelect({ label, value, options, withIcon = false, onChange
   }
 
   return (
-    <div className="flex h-10 items-center gap-2 rounded-lg border bg-white px-3">
+    <div className="flex h-10 w-44 shrink-0 items-center gap-2 rounded-lg border bg-white px-3">
       <Filter className="h-4 w-4 text-muted-foreground" />
       {select}
     </div>

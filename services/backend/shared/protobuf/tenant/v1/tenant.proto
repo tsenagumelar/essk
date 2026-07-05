@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package essk.tenant.v1;
+
+option go_package = "github.com/tsenagumelar/essk/services/backend/shared/protobuf/gen/tenant/v1;tenantv1";
+
+import "common/v1/metadata.proto";
+
+service TenantService {
+  rpc ResolveTenant(ResolveTenantRequest) returns (ResolveTenantResponse);
+}
+
+message ResolveTenantRequest {
+  string tenant_id = 1;
+  string tenant_slug = 2;
+}
+
+message ResolveTenantResponse {
+  string tenant_id = 1;
+  string tenant_slug = 2;
+  string name = 3;
+  bool active = 4;
+  essk.common.v1.RequestContext context = 5;
+}
