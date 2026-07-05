@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPatch, apiPost } from "@/shared/api/client";
+import { apiDelete, apiGet, apiPatch, apiPost } from "@/shared/functions/api/client";
 import type { AdminUser } from "@/features/users/types";
 
 export type { AdminUser } from "@/features/users/types";

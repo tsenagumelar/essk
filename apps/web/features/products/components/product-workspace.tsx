@@ -1,7 +1,6 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, FileText, Filter, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { FormEvent, useMemo, useState } from "react";
 import {
   createProduct,
@@ -10,7 +9,21 @@ import {
   updateProduct,
   type Product,
 } from "@/features/products/api";
-import { ConfirmationDialog } from "@/shared/molecules/confirmation-dialog";
+import { Badge } from "@/shared/components/atoms/badge";
+import { Button } from "@/shared/components/atoms/button";
+import { CheckboxField } from "@/shared/components/atoms/checkbox-field";
+import { SelectField } from "@/shared/components/atoms/select-field";
+import { TextInput } from "@/shared/components/atoms/text-input";
+import { ConfirmationDialog } from "@/shared/components/molecules/confirmation-dialog";
+import { FilterSelect } from "@/shared/components/molecules/filter-select";
+import { Modal } from "@/shared/components/molecules/modal";
+import { Pagination } from "@/shared/components/molecules/pagination";
+import { RowActions } from "@/shared/components/molecules/row-actions";
+import { CrudToolbar } from "@/shared/components/organisms/crud-toolbar";
+import { DataTable } from "@/shared/components/organisms/data-table";
+import { PageShell } from "@/shared/components/organisms/page-shell";
+import { exportExcel as exportExcelFile } from "@/shared/functions/export/export-excel";
+import { printPdf } from "@/shared/functions/export/print-pdf";
 
 type FormState = {
   code: string;
@@ -30,7 +43,6 @@ const emptyForm: FormState = {
   isActive: true,
 };
 
-const pageSizeOptions = [5, 10, 20];
 const emptyProducts: Product[] = [];
 
 type PendingAction =
@@ -60,45 +72,6 @@ function productMatchesSearch(product: Product, search: string) {
     return true;
   }
   return [product.code, product.name, product.category, product.status].some((value) => value.toLowerCase().includes(query));
-}
-
-function exportExcel(products: Product[]) {
-  const rows = products.map((product) => `
-    <tr>
-      <td>${product.code}</td>
-      <td>${product.name}</td>
-      <td>${product.category}</td>
-      <td>${product.price_cents / 100}</td>
-      <td>${product.status}</td>
-      <td>${product.is_active ? "Active" : "Inactive"}</td>
-    </tr>
-  `);
-  const workbook = `
-    <table>
-      <thead>
-        <tr>
-          <th>Code</th>
-          <th>Name</th>
-          <th>Category</th>
-          <th>Price</th>
-          <th>Status</th>
-          <th>Active</th>
-        </tr>
-      </thead>
-      <tbody>${rows.join("")}</tbody>
-    </table>
-  `;
-  const blob = new Blob([workbook], { type: "application/vnd.ms-excel" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "products.xls";
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
-function exportPdf() {
-  window.print();
 }
 
 export function ProductWorkspace() {
@@ -300,290 +273,172 @@ export function ProductWorkspace() {
 
   return (
     <>
-      <section className="overflow-hidden rounded-xl border bg-white shadow-sm">
-        <div className="border-b bg-gradient-to-r from-white to-slate-50 px-4 py-4">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-            <div>
-              <h2 className="text-base font-semibold">Master Products</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {filteredProducts.length} records, {activeCount} active
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-              <div className="relative min-w-0 lg:w-72">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <input
-                  type="search"
-                  placeholder="Search code, name, category"
-                  className="h-10 w-full rounded-lg border bg-white pl-9 pr-3 text-sm outline-none ring-primary focus:ring-2"
-                  value={search}
-                  onChange={(event) => updateSearch(event.target.value)}
+      <PageShell
+        title="Master Products"
+        subtitle={`${filteredProducts.length} records, ${activeCount} active`}
+        toolbar={
+          <CrudToolbar
+            search={search}
+            searchPlaceholder="Search code, name, category"
+            onSearch={updateSearch}
+            onAdd={openCreateModal}
+            addLabel="Add Product"
+            filters={
+              <>
+                <FilterSelect
+                  withIcon
+                  label="Status"
+                  value={statusFilter}
+                  options={[
+                    { value: "all", label: "All status" },
+                    { value: "active", label: "Active" },
+                    { value: "inactive", label: "Inactive" },
+                    { value: "draft", label: "Draft" },
+                  ]}
+                  onChange={(value) => updateStatusFilter(value as "all" | Product["status"])}
                 />
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <div className="flex h-10 items-center gap-2 rounded-lg border bg-white px-3">
-                  <Filter className="h-4 w-4 text-muted-foreground" />
-                  <select
-                    className="bg-transparent text-sm outline-none"
-                    value={statusFilter}
-                    onChange={(event) => updateStatusFilter(event.target.value as "all" | Product["status"])}
-                  >
-                    <option value="all">All status</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="draft">Draft</option>
-                  </select>
-                </div>
-                <select
-                  className="h-10 rounded-lg border bg-white px-3 text-sm outline-none ring-primary focus:ring-2"
+                <FilterSelect
+                  label="Category"
                   value={categoryFilter}
-                  onChange={(event) => updateCategoryFilter(event.target.value)}
-                >
-                  <option value="all">All categories</option>
-                  {categories.map((category) => (
-                    <option key={category} value={category}>
-                      {category}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  className="inline-flex h-10 items-center gap-2 rounded-lg border bg-white px-3 text-sm font-medium hover:bg-slate-50"
-                  onClick={() => exportExcel(filteredProducts)}
-                >
-                  <Download className="h-4 w-4" />
-                  Excel
-                </button>
-                <button className="inline-flex h-10 items-center gap-2 rounded-lg border bg-white px-3 text-sm font-medium hover:bg-slate-50" onClick={exportPdf}>
-                  <FileText className="h-4 w-4" />
-                  PDF
-                </button>
-                <button
-                  className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-95"
-                  onClick={openCreateModal}
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Product
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+                  options={[{ value: "all", label: "All categories" }, ...categories.map((category) => ({ value: category, label: category }))]}
+                  onChange={updateCategoryFilter}
+                />
+              </>
+            }
+            onExportExcel={() =>
+              exportExcelFile(
+                "products.xls",
+                ["Code", "Name", "Category", "Price", "Status", "Active"],
+                filteredProducts.map((product) => [
+                  product.code,
+                  product.name,
+                  product.category,
+                  String(product.price_cents / 100),
+                  product.status,
+                  product.is_active ? "Active" : "Inactive",
+                ]),
+              )
+            }
+            onExportPdf={printPdf}
+          />
+        }
+      >
 
         {error ? <p className="border-b px-4 py-3 text-sm text-destructive">{error.message}</p> : null}
 
-        {productsQuery.isLoading ? (
-          <p className="p-4 text-sm text-muted-foreground">Loading products...</p>
-        ) : filteredProducts.length === 0 ? (
-          <div className="p-10 text-center">
-            <p className="text-sm font-medium">No products found</p>
-            <p className="mt-1 text-sm text-muted-foreground">Adjust search/filter or create a new master data record.</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-3">Code</th>
-                  <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Category</th>
-                  <th className="px-4 py-3">Price</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Active</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedProducts.map((product) => (
-                  <tr key={product.id} className="border-t hover:bg-slate-50/80">
-                    <td className="px-4 py-3 font-semibold">{product.code}</td>
-                    <td className="px-4 py-3">{product.name}</td>
-                    <td className="px-4 py-3">{product.category}</td>
-                    <td className="px-4 py-3">{formatCurrency(product.price_cents)}</td>
-                    <td className="px-4 py-3">
-                      <span className="rounded-full bg-slate-100 px-2 py-1 text-xs capitalize">{product.status}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={product.is_active ? "text-primary" : "text-muted-foreground"}>
-                        {product.is_active ? "Yes" : "No"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <button
-                        className="mr-2 inline-flex h-8 w-8 items-center justify-center rounded-lg border hover:bg-slate-50"
-                        aria-label={`Edit ${product.name}`}
-                        onClick={() => openEditModal(product)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                      <button
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border text-destructive hover:bg-slate-50"
-                        aria-label={`Delete ${product.name}`}
-                        disabled={deleteMutation.isPending}
-                        onClick={() => setPendingAction({ type: "delete", product })}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <DataTable
+          headers={["Code", "Name", "Category", "Price", "Status", "Active", "Actions"]}
+          loading={productsQuery.isLoading}
+          loadingLabel="Loading products..."
+          emptyTitle="No products found"
+          emptyDescription="Adjust search/filter or create a new master data record."
+          rows={paginatedProducts.map((product) => [
+            <span key={`${product.id}-code`} className="font-semibold">{product.code}</span>,
+            product.name,
+            product.category,
+            formatCurrency(product.price_cents),
+            <Badge key={`${product.id}-status`} className="capitalize">{product.status}</Badge>,
+            <span key={`${product.id}-active`} className={product.is_active ? "text-primary" : "text-muted-foreground"}>
+              {product.is_active ? "Yes" : "No"}
+            </span>,
+            <RowActions
+              key={`${product.id}-actions`}
+              editLabel={`Edit ${product.name}`}
+              deleteLabel={`Delete ${product.name}`}
+              onEdit={() => openEditModal(product)}
+              onDelete={() => setPendingAction({ type: "delete", product })}
+            />,
+          ])}
+        />
 
-        <div className="flex flex-col gap-3 border-t px-4 py-3 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
-          <p>
-            Showing {firstRecord}-{lastRecord} of {filteredProducts.length}
-          </p>
-          <div className="flex items-center gap-2">
-            <select
-              className="h-9 rounded-lg border bg-white px-2 text-sm outline-none"
-              value={pageSize}
-              onChange={(event) => {
-                setPageSize(Number(event.target.value));
-                setPage(1);
-              }}
-            >
-              {pageSizeOptions.map((size) => (
-                <option key={size} value={size}>
-                  {size} / page
-                </option>
-              ))}
-            </select>
-            <button
-              className="h-9 rounded-lg border bg-white px-3 disabled:opacity-50"
-              disabled={currentPage <= 1}
-              onClick={() => setPage((current) => Math.max(1, current - 1))}
-            >
-              Prev
-            </button>
-            <span className="px-2">
-              Page {currentPage} of {totalPages}
-            </span>
-            <button
-              className="h-9 rounded-lg border bg-white px-3 disabled:opacity-50"
-              disabled={currentPage >= totalPages}
-              onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      </section>
+        <Pagination
+          page={currentPage}
+          pageSize={pageSize}
+          totalPages={totalPages}
+          totalItems={filteredProducts.length}
+          firstRecord={firstRecord}
+          lastRecord={lastRecord}
+          onPageChange={setPage}
+          onPageSizeChange={(value) => {
+            setPageSize(value);
+            setPage(1);
+          }}
+        />
+      </PageShell>
 
       {isModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <section className="w-full max-w-lg rounded-xl bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b px-5 py-4">
-              <div>
-                <h2 className="text-base font-semibold">{editing ? "Edit Product" : "Create Product"}</h2>
-                <p className="text-sm text-muted-foreground">Maintain product master data.</p>
-              </div>
-              <button className="rounded-lg p-2 hover:bg-slate-100" onClick={closeModal} aria-label="Close form">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <form className="space-y-4 p-5" onSubmit={onSubmit}>
-              <div>
-                <label className="text-sm font-medium" htmlFor="code">
-                  Code
-                </label>
-                <input
-                  id="code"
-                  disabled={Boolean(editing)}
-                  required
-                  className="mt-1 h-10 w-full rounded-lg border px-3 text-sm outline-none ring-primary focus:ring-2 disabled:bg-muted"
-                  value={form.code}
-                  onChange={(event) => setForm((current) => ({ ...current, code: event.target.value.toUpperCase() }))}
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium" htmlFor="name">
-                  Name
-                </label>
-                <input
-                  id="name"
-                  required
-                  className="mt-1 h-10 w-full rounded-lg border px-3 text-sm outline-none ring-primary focus:ring-2"
-                  value={form.name}
-                  onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium" htmlFor="category">
-                  Category
-                </label>
-                <input
-                  id="category"
-                  required
-                  className="mt-1 h-10 w-full rounded-lg border px-3 text-sm outline-none ring-primary focus:ring-2"
-                  value={form.category}
-                  onChange={(event) => setForm((current) => ({ ...current, category: event.target.value }))}
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium" htmlFor="price">
-                  Price
-                </label>
-                <input
-                  id="price"
-                  type="number"
-                  min="0"
-                  step="100"
-                  required
-                  className="mt-1 h-10 w-full rounded-lg border px-3 text-sm outline-none ring-primary focus:ring-2"
-                  value={form.price}
-                  onChange={(event) => setForm((current) => ({ ...current, price: event.target.value }))}
-                />
-              </div>
+        <Modal title={editing ? "Edit Product" : "Create Product"} subtitle="Maintain product master data." onClose={closeModal}>
+          <form className="space-y-4 p-5" onSubmit={onSubmit}>
+            <TextInput
+              id="code"
+              label="Code"
+              disabled={Boolean(editing)}
+              required
+              value={form.code}
+              onChange={(event) => setForm((current) => ({ ...current, code: event.target.value.toUpperCase() }))}
+            />
+            <TextInput
+              id="name"
+              label="Name"
+              required
+              value={form.name}
+              onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+            />
+            <TextInput
+              id="category"
+              label="Category"
+              required
+              value={form.category}
+              onChange={(event) => setForm((current) => ({ ...current, category: event.target.value }))}
+            />
+            <TextInput
+              id="price"
+              label="Price"
+              type="number"
+              min="0"
+              step="100"
+              required
+              value={form.price}
+              onChange={(event) => setForm((current) => ({ ...current, price: event.target.value }))}
+            />
               {editing ? (
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-sm font-medium" htmlFor="status">
-                      Status
-                    </label>
-                    <select
-                      id="status"
-                      className="mt-1 h-10 w-full rounded-lg border px-3 text-sm outline-none ring-primary focus:ring-2"
-                      value={form.status}
-                      onChange={(event) =>
-                        setForm((current) => ({ ...current, status: event.target.value as Product["status"] }))
-                      }
-                    >
-                      <option value="active">Active</option>
-                      <option value="inactive">Inactive</option>
-                      <option value="draft">Draft</option>
-                    </select>
-                  </div>
-                  <label className="flex items-end gap-2 pb-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={form.isActive}
-                      onChange={(event) => setForm((current) => ({ ...current, isActive: event.target.checked }))}
-                    />
-                    Active
-                  </label>
+                  <SelectField
+                    id="status"
+                    label="Status"
+                    value={form.status}
+                    options={[
+                      { value: "active", label: "Active" },
+                      { value: "inactive", label: "Inactive" },
+                      { value: "draft", label: "Draft" },
+                    ]}
+                    onChange={(event) =>
+                      setForm((current) => ({ ...current, status: event.target.value as Product["status"] }))
+                    }
+                  />
+                  <CheckboxField
+                    className="items-end pb-2"
+                    label="Active"
+                    checked={form.isActive}
+                    onChange={(event) => setForm((current) => ({ ...current, isActive: event.target.checked }))}
+                  />
                 </div>
               ) : null}
               {error ? <p className="text-sm text-destructive">{error.message}</p> : null}
               <div className="flex justify-end gap-2 border-t pt-4">
-                <button type="button" className="rounded-lg border px-3 py-2 text-sm font-medium" onClick={closeModal}>
+                <Button type="button" variant="outline" onClick={closeModal}>
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
                   type="submit"
-                  disabled={isSaving}
-                  className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
+                  isLoading={isSaving}
+                  loadingLabel="Saving..."
                 >
-                  {isSaving ? "Saving..." : editing ? "Update" : "Create"}
-                </button>
+                  {editing ? "Update" : "Create"}
+                </Button>
               </div>
             </form>
-          </section>
-        </div>
+        </Modal>
       ) : null}
 
       <ConfirmationDialog

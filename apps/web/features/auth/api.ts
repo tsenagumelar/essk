@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from "@/shared/api/client";
+import { apiGet, apiPost } from "@/shared/functions/api/client";
 import type { AuthResponse, AuthUser, LoginPayload } from "@/features/auth/types";
 
 export function login(payload: LoginPayload) {

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { getMe } from "@/features/auth/api";
-import { getStoredUser } from "@/shared/auth/session";
+import { getStoredUser } from "@/shared/functions/auth/session";
 
 export function useProfile() {
   const fallbackUser = getStoredUser();

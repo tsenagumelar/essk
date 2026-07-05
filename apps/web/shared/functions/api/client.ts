@@ -1,4 +1,4 @@
-import { getAccessToken } from "@/shared/auth/session";
+import { getAccessToken } from "@/shared/functions/auth/session";
 import { env } from "@/lib/env";
 
 export type ApiEnvelope<T> = {

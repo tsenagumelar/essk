@@ -1,7 +1,6 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, ChevronDown, Download, FileText, Filter, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { Dispatch, FormEvent, SetStateAction, useState } from "react";
 import {
   createTenant,
@@ -12,9 +11,23 @@ import {
 } from "@/features/tenants/api";
 import { createUser, deleteUser, listUsers, updateUser, type AdminUser } from "@/features/users/api";
 import { createRole, deleteRole, listRoles, updateRole, type Role } from "@/features/roles/api";
+import { Badge } from "@/shared/components/atoms/badge";
+import { Button } from "@/shared/components/atoms/button";
+import { CheckboxField } from "@/shared/components/atoms/checkbox-field";
+import { SelectField } from "@/shared/components/atoms/select-field";
+import { TextInput } from "@/shared/components/atoms/text-input";
+import { ConfirmableActionDialog } from "@/shared/components/molecules/confirmable-action-dialog";
+import { FilterSelect as SharedFilterSelect } from "@/shared/components/molecules/filter-select";
+import { Modal as SharedModal } from "@/shared/components/molecules/modal";
+import { MultiSelect } from "@/shared/components/molecules/multi-select";
+import { Pagination as SharedPagination } from "@/shared/components/molecules/pagination";
+import { RowActions as SharedRowActions } from "@/shared/components/molecules/row-actions";
+import { CrudToolbar } from "@/shared/components/organisms/crud-toolbar";
+import { DataTable as SharedDataTable } from "@/shared/components/organisms/data-table";
+import { PageShell as SharedPageShell } from "@/shared/components/organisms/page-shell";
 import { useConfirmableAction } from "@/shared/hooks/use-confirmable-action";
-import { exportExcel } from "@/shared/utils/export-excel";
-import { printPdf } from "@/shared/utils/print-pdf";
+import { exportExcel } from "@/shared/functions/export/export-excel";
+import { printPdf } from "@/shared/functions/export/print-pdf";
 
 const pageSizeOptions = [5, 10, 20];
 
@@ -25,20 +38,9 @@ function Modal({
   onClose,
 }: Readonly<{ title: string; subtitle: string; children: React.ReactNode; onClose: () => void }>) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <section className="w-full max-w-lg rounded-xl bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b px-5 py-4">
-          <div>
-            <h2 className="text-base font-semibold">{title}</h2>
-            <p className="text-sm text-muted-foreground">{subtitle}</p>
-          </div>
-          <button className="rounded-lg p-2 hover:bg-slate-100" onClick={onClose} aria-label="Close form">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        {children}
-      </section>
-    </div>
+    <SharedModal title={title} subtitle={subtitle} onClose={onClose}>
+      {children}
+    </SharedModal>
   );
 }
 
@@ -64,49 +66,22 @@ function PageShell({
   children: React.ReactNode;
 }>) {
   return (
-    <section className="overflow-hidden rounded-xl border bg-white shadow-sm">
-      <div className="border-b bg-gradient-to-r from-white to-slate-50 px-4 py-4">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-          <div>
-            <h2 className="text-base font-semibold">{title}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
-          </div>
-
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-            <div className="relative min-w-0 lg:w-72">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="search"
-                className="h-10 w-full rounded-lg border bg-white pl-9 pr-3 text-sm outline-none ring-primary focus:ring-2"
-                placeholder="Search records"
-                value={search}
-                onChange={(event) => onSearch(event.target.value)}
-              />
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              {filters}
-              <button
-                className="inline-flex h-10 items-center gap-2 rounded-lg border bg-white px-3 text-sm font-medium hover:bg-slate-50"
-                onClick={onExportExcel}
-              >
-                <Download className="h-4 w-4" />
-                Excel
-              </button>
-              <button className="inline-flex h-10 items-center gap-2 rounded-lg border bg-white px-3 text-sm font-medium hover:bg-slate-50" onClick={onExportPdf}>
-                <FileText className="h-4 w-4" />
-                PDF
-              </button>
-              <button className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-95" onClick={onAdd}>
-                <Plus className="h-4 w-4" />
-                Add
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+    <SharedPageShell
+      title={title}
+      subtitle={subtitle}
+      toolbar={
+        <CrudToolbar
+          search={search}
+          onSearch={onSearch}
+          onAdd={onAdd}
+          filters={filters}
+          onExportExcel={onExportExcel}
+          onExportPdf={onExportPdf}
+        />
+      }
+    >
       {children}
-    </section>
+    </SharedPageShell>
   );
 }
 
@@ -236,7 +211,12 @@ export function TenantsWorkspace() {
           </form>
         </Modal>
       ) : null}
-      {confirm.dialog(saveMutation.isPending || deleteMutation.isPending)}
+      <ConfirmableActionDialog
+        pending={confirm.pending}
+        isLoading={saveMutation.isPending || deleteMutation.isPending}
+        onCancel={confirm.cancel}
+        onConfirm={confirm.confirm}
+      />
     </>
   );
 }
@@ -397,7 +377,12 @@ export function UsersWorkspace() {
           </form>
         </Modal>
       ) : null}
-      {confirm.dialog(saveMutation.isPending || deleteMutation.isPending)}
+      <ConfirmableActionDialog
+        pending={confirm.pending}
+        isLoading={saveMutation.isPending || deleteMutation.isPending}
+        onCancel={confirm.cancel}
+        onConfirm={confirm.confirm}
+      />
     </>
   );
 }
@@ -549,28 +534,18 @@ export function RolesWorkspace() {
           </form>
         </Modal>
       ) : null}
-      {confirm.dialog(saveMutation.isPending || deleteMutation.isPending)}
+      <ConfirmableActionDialog
+        pending={confirm.pending}
+        isLoading={saveMutation.isPending || deleteMutation.isPending}
+        onCancel={confirm.cancel}
+        onConfirm={confirm.confirm}
+      />
     </>
   );
 }
 
 function DataTable({ headers, rows, loading }: Readonly<{ headers: string[]; rows: React.ReactNode[][]; loading: boolean }>) {
-  if (loading) {
-    return <p className="p-4 text-sm text-muted-foreground">Loading...</p>;
-  }
-  if (rows.length === 0) {
-    return <p className="p-10 text-center text-sm text-muted-foreground">No records found.</p>;
-  }
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-left text-sm">
-        <thead className="bg-slate-50 text-xs uppercase text-muted-foreground">
-          <tr>{headers.map((header) => <th key={header} className="px-4 py-3">{header}</th>)}</tr>
-        </thead>
-        <tbody>{rows.map((row, index) => <tr key={index} className="border-t hover:bg-slate-50">{row.map((cell, cellIndex) => <td key={cellIndex} className="px-4 py-3">{cell}</td>)}</tr>)}</tbody>
-      </table>
-    </div>
-  );
+  return <SharedDataTable headers={headers} rows={rows} loading={loading} loadingLabel="Loading..." />;
 }
 
 function Pagination({
@@ -593,57 +568,22 @@ function Pagination({
   onPageSizeChange: (pageSize: number) => void;
 }>) {
   return (
-    <div className="flex flex-col gap-3 border-t px-4 py-3 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
-      <p>
-        Showing {firstRecord}-{lastRecord} of {totalItems}
-      </p>
-      <div className="flex items-center gap-2">
-        <select
-          className="h-9 rounded-lg border bg-white px-2 text-sm outline-none"
-          value={pageSize}
-          onChange={(event) => onPageSizeChange(Number(event.target.value))}
-        >
-          {pageSizeOptions.map((size) => (
-            <option key={size} value={size}>
-              {size} / page
-            </option>
-          ))}
-        </select>
-        <button
-          type="button"
-          className="h-9 rounded-lg border bg-white px-3 disabled:opacity-50"
-          disabled={page <= 1}
-          onClick={() => onPageChange(Math.max(1, page - 1))}
-        >
-          Prev
-        </button>
-        <span className="px-2">
-          Page {page} of {totalPages}
-        </span>
-        <button
-          type="button"
-          className="h-9 rounded-lg border bg-white px-3 disabled:opacity-50"
-          disabled={page >= totalPages}
-          onClick={() => onPageChange(Math.min(totalPages, page + 1))}
-        >
-          Next
-        </button>
-      </div>
-    </div>
+    <SharedPagination
+      page={page}
+      pageSize={pageSize}
+      totalPages={totalPages}
+      totalItems={totalItems}
+      firstRecord={firstRecord}
+      lastRecord={lastRecord}
+      pageSizeOptions={pageSizeOptions}
+      onPageChange={onPageChange}
+      onPageSizeChange={onPageSizeChange}
+    />
   );
 }
 
 function RowActions({ onEdit, onDelete }: Readonly<{ onEdit: () => void; onDelete: () => void }>) {
-  return (
-    <div className="flex justify-end gap-2">
-      <button className="inline-flex h-8 w-8 items-center justify-center rounded-lg border hover:bg-slate-50" onClick={onEdit}>
-        <Pencil className="h-4 w-4" />
-      </button>
-      <button className="inline-flex h-8 w-8 items-center justify-center rounded-lg border text-destructive hover:bg-slate-50" onClick={onDelete}>
-        <Trash2 className="h-4 w-4" />
-      </button>
-    </div>
-  );
+  return <SharedRowActions onEdit={onEdit} onDelete={onDelete} />;
 }
 
 function FilterSelect({
@@ -653,36 +593,7 @@ function FilterSelect({
   withIcon,
   onChange,
 }: Readonly<{ label: string; value: string; options: { value: string; label: string }[]; withIcon?: boolean; onChange: (value: string) => void }>) {
-  const select = (
-    <select
-      aria-label={label}
-      className={withIcon ? "bg-transparent text-sm outline-none" : "h-10 rounded-lg border bg-white px-3 text-sm outline-none ring-primary focus:ring-2"}
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-    >
-      {options.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
-  );
-
-  if (withIcon) {
-    return (
-      <div className="flex h-10 items-center gap-2 rounded-lg border bg-white px-3">
-        <Filter className="h-4 w-4 text-muted-foreground" />
-        {select}
-      </div>
-    );
-  }
-
-  return (
-    <>
-      <span className="sr-only">{label}</span>
-      {select}
-    </>
-  );
+  return <SharedFilterSelect label={label} value={value} options={options} withIcon={withIcon} onChange={onChange} />;
 }
 
 function RoleBadges({ labels }: Readonly<{ labels: string[] }>) {
@@ -693,81 +604,22 @@ function RoleBadges({ labels }: Readonly<{ labels: string[] }>) {
   return (
     <div className="flex max-w-80 flex-wrap gap-1">
       {labels.map((label) => (
-        <span key={label} className="rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700">
-          {label}
-        </span>
+        <Badge key={label}>{label}</Badge>
       ))}
     </div>
   );
 }
 
 function Input({ label, value, disabled, onChange }: Readonly<{ label: string; value: string; disabled?: boolean; onChange: (value: string) => void }>) {
-  return (
-    <label className="block text-sm font-medium">
-      {label}
-      <input disabled={disabled} required className="mt-1 h-10 w-full rounded-lg border px-3 text-sm outline-none ring-primary focus:ring-2 disabled:bg-muted" value={value} onChange={(event) => onChange(event.target.value)} />
-    </label>
-  );
+  return <TextInput label={label} value={value} disabled={disabled} required onChange={(event) => onChange(event.target.value)} />;
 }
 
 function Select({ label, value, disabled, options, onChange }: Readonly<{ label: string; value: string; disabled?: boolean; options: { value: string; label: string }[]; onChange: (value: string) => void }>) {
-  return (
-    <label className="block text-sm font-medium">
-      {label}
-      <select disabled={disabled} className="mt-1 h-10 w-full rounded-lg border px-3 text-sm outline-none ring-primary focus:ring-2 disabled:bg-muted" value={value} onChange={(event) => onChange(event.target.value)}>
-        {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-      </select>
-    </label>
-  );
+  return <SelectField label={label} value={value} disabled={disabled} options={options} onChange={(event) => onChange(event.target.value)} />;
 }
 
 function RoleDropdown({ label, values, options, onChange }: Readonly<{ label: string; values: string[]; options: { value: string; label: string }[]; onChange: (values: string[]) => void }>) {
-  const [isOpen, setIsOpen] = useState(false);
-  const selectedLabels = options.filter((option) => values.includes(option.value)).map((option) => option.label);
-
-  function toggle(value: string) {
-    onChange(values.includes(value) ? values.filter((current) => current !== value) : [...values, value]);
-  }
-
-  return (
-    <div className="relative text-sm font-medium">
-      <p>{label}</p>
-      <button
-        type="button"
-        className="mt-1 flex min-h-10 w-full items-center justify-between gap-3 rounded-lg border bg-white px-3 py-2 text-left text-sm outline-none ring-primary focus:ring-2"
-        onClick={() => setIsOpen((current) => !current)}
-      >
-        <span className={selectedLabels.length === 0 ? "text-muted-foreground" : "text-slate-900"}>
-          {selectedLabels.length === 0 ? "Select roles" : selectedLabels.join(", ")}
-        </span>
-        <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-      </button>
-      {isOpen ? (
-        <div className="absolute z-20 mt-2 max-h-56 w-full overflow-auto rounded-lg border bg-white p-2 shadow-lg">
-          {options.length === 0 ? (
-            <p className="px-2 py-2 text-sm text-muted-foreground">No roles available for this tenant.</p>
-          ) : (
-            options.map((option) => {
-              const selected = values.includes(option.value);
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-slate-50"
-                  onClick={() => toggle(option.value)}
-                >
-                  <span className="flex h-4 w-4 items-center justify-center rounded border">
-                    {selected ? <Check className="h-3 w-3" /> : null}
-                  </span>
-                  {option.label}
-                </button>
-              );
-            })
-          )}
-        </div>
-      ) : null}
-    </div>
-  );
+  return <MultiSelect label={label} values={values} options={options} emptyLabel="Select roles" onChange={onChange} />;
 }
 
 function ActiveField<T extends { is_active: boolean }>({
@@ -778,22 +630,19 @@ function ActiveField<T extends { is_active: boolean }>({
   setForm: Dispatch<SetStateAction<T>>;
 }) {
   return (
-    <label className="flex items-center gap-2 text-sm">
-      <input type="checkbox" checked={form.is_active} onChange={(event) => setForm((current) => ({ ...current, is_active: event.target.checked }))} />
-      Active
-    </label>
+    <CheckboxField label="Active" checked={form.is_active} onChange={(event) => setForm((current) => ({ ...current, is_active: event.target.checked }))} />
   );
 }
 
 function FormActions({ onCancel, loading }: Readonly<{ onCancel: () => void; loading: boolean }>) {
   return (
     <div className="flex justify-end gap-2 border-t pt-4">
-      <button type="button" className="rounded-lg border px-3 py-2 text-sm font-medium" onClick={onCancel}>
+      <Button type="button" variant="outline" onClick={onCancel}>
         Cancel
-      </button>
-      <button type="submit" disabled={loading} className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60">
-        {loading ? "Saving..." : "Save"}
-      </button>
+      </Button>
+      <Button type="submit" isLoading={loading} loadingLabel="Saving...">
+        Save
+      </Button>
     </div>
   );
 }

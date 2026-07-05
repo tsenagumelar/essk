@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { login } from "@/features/auth/api";
 import { loginSchema, type LoginFormValues } from "@/features/auth/schema";
-import { storeSession } from "@/shared/auth/session";
+import { Button } from "@/shared/components/atoms/button";
+import { storeSession } from "@/shared/functions/auth/session";
 
 export function LoginForm() {
   const router = useRouter();
@@ -66,13 +67,15 @@ export function LoginForm() {
 
       {mutation.isError ? <p className="text-sm text-destructive">Invalid email or password.</p> : null}
 
-      <button
+      <Button
         type="submit"
-        disabled={isSubmitting || mutation.isPending}
-        className="h-11 w-full rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
+        size="lg"
+        className="w-full"
+        isLoading={isSubmitting || mutation.isPending}
+        loadingLabel="Signing in..."
       >
-        {isSubmitting || mutation.isPending ? "Signing in..." : "Sign in"}
-      </button>
+        Sign in
+      </Button>
     </form>
   );
 }

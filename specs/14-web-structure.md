@@ -11,6 +11,9 @@ The target structure separates routing, feature implementation, shared UI, share
 - `apps/web/app` is only for routing, route metadata, layouts, loading states, and error boundaries.
 - Route UI and business logic live in `apps/web/features/{feature}`.
 - Reusable UI, hooks, utilities, and contracts live in `apps/web/shared`.
+- Shared `.tsx` views must live under `apps/web/shared/components`.
+- Shared hooks must live under `apps/web/shared/hooks` and should avoid rendering JSX when a shared component can render it instead.
+- Shared non-view functions, API clients, session helpers, formatters, and export helpers must live under `apps/web/shared/functions`.
 - Atomic design is used for reusable visual components.
 - Each feature owns its view, types, hooks, API adapters, schemas, and feature-specific components.
 - Cross-feature imports are not allowed unless routed through `shared` or an explicit public feature API.
@@ -104,34 +107,36 @@ apps/web/
       components/
 
   shared/
-    atoms/
-      button.tsx
-      input.tsx
-      select.tsx
-      checkbox.tsx
-      icon-button.tsx
-      badge.tsx
-      spinner.tsx
+    components/
+      atoms/
+        button.tsx
+        input.tsx
+        select.tsx
+        checkbox.tsx
+        icon-button.tsx
+        badge.tsx
+        spinner.tsx
 
-    molecules/
-      search-box.tsx
-      filter-select.tsx
-      pagination.tsx
-      confirmation-dialog.tsx
-      dropdown-checkbox.tsx
-      table-actions.tsx
+      molecules/
+        search-box.tsx
+        filter-select.tsx
+        pagination.tsx
+        confirmation-dialog.tsx
+        confirmable-action-dialog.tsx
+        dropdown-checkbox.tsx
+        table-actions.tsx
 
-    organisms/
-      data-table.tsx
-      data-toolbar.tsx
-      modal-form.tsx
-      app-navbar.tsx
-      app-sidebar.tsx
+      organisms/
+        data-table.tsx
+        data-toolbar.tsx
+        modal-form.tsx
+        app-navbar.tsx
+        app-sidebar.tsx
 
-    templates/
-      crud-page.tsx
-      authenticated-layout.tsx
-      split-auth-layout.tsx
+      templates/
+        crud-page.tsx
+        authenticated-layout.tsx
+        split-auth-layout.tsx
 
     hooks/
       use-confirmable-action.ts
@@ -139,25 +144,28 @@ apps/web/
       use-pagination.ts
       use-unauthorized-redirect.ts
 
-    api/
-      client.ts
-      errors.ts
-      envelope.ts
+    functions/
+      api/
+        client.ts
+        errors.ts
+        envelope.ts
 
-    auth/
-      session.ts
-      permissions.ts
+      auth/
+        session.ts
+        permissions.ts
+
+      export/
+        export-excel.ts
+        print-pdf.ts
+
+      format/
+        currency.ts
+        date.ts
 
     types/
       api.ts
       pagination.ts
       table.ts
-
-    utils/
-      cn.ts
-      export-excel.ts
-      print-pdf.ts
-      format.ts
 
   lib/
     env.ts

@@ -2,6 +2,7 @@
 
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/shared/components/atoms/button";
 
 type ConfirmationDialogProps = {
   open: boolean;
@@ -51,25 +52,22 @@ export function ConfirmationDialog({
         </div>
 
         <div className="mt-5 flex justify-end gap-2">
-          <button
+          <Button
             type="button"
-            className="rounded-lg border px-3 py-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-60"
+            variant="outline"
             disabled={isLoading}
             onClick={onCancel}
           >
             {cancelLabel}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className={cn(
-              "rounded-lg px-3 py-2 text-sm font-medium text-white disabled:opacity-60",
-              variant === "danger" ? "bg-destructive" : "bg-primary",
-            )}
-            disabled={isLoading}
+            variant={variant === "danger" ? "danger" : "primary"}
+            isLoading={isLoading}
             onClick={onConfirm}
           >
-            {isLoading ? "Processing..." : confirmLabel}
-          </button>
+            {confirmLabel}
+          </Button>
         </div>
       </section>
     </div>

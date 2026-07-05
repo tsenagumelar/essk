@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPatch, apiPost } from "@/shared/api/client";
+import { apiDelete, apiGet, apiPatch, apiPost } from "@/shared/functions/api/client";
 import type { Tenant } from "@/features/tenants/types";
 
 export type { Tenant } from "@/features/tenants/types";

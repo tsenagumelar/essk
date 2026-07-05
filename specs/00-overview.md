@@ -63,6 +63,14 @@ Deliverables:
 
 ## Architecture Summary
 
+The long-term enterprise platform target is defined in:
+
+```text
+specs/15-enterprise-platform-architecture-roadmap.md
+```
+
+That roadmap uses the provided Enterprise Platform Architecture diagram as the main architecture reference for the future platform direction.
+
 Request flow:
 
 ```text

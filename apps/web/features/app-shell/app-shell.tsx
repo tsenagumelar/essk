@@ -9,7 +9,6 @@ import {
   Menu,
   Package,
   Shield,
-  Search,
   Settings,
   ShieldCheck,
   Building2,
@@ -22,9 +21,11 @@ import { useEffect, useMemo, useState } from "react";
 import { listRoles } from "@/features/roles/api";
 import { listTenants } from "@/features/tenants/api";
 import { listUsers } from "@/features/users/api";
-import { clearSession, getAccessToken, getStoredUser } from "@/shared/auth/session";
-import { ConfirmationDialog } from "@/shared/molecules/confirmation-dialog";
-import { unauthorizedEventName } from "@/shared/api/client";
+import { clearSession, getAccessToken, getStoredUser } from "@/shared/functions/auth/session";
+import { IconButton } from "@/shared/components/atoms/icon-button";
+import { ConfirmationDialog } from "@/shared/components/molecules/confirmation-dialog";
+import { SearchBox } from "@/shared/components/molecules/search-box";
+import { unauthorizedEventName } from "@/shared/functions/api/client";
 import { cn } from "@/lib/utils";
 
 const navGroups = [
@@ -55,6 +56,7 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
   const [isReloginOpen, setIsReloginOpen] = useState(false);
+  const [globalSearch, setGlobalSearch] = useState("");
   const [user, setUser] = useState<ReturnType<typeof getStoredUser>>(null);
   const tenantsQuery = useQuery({ queryKey: ["tenants"], queryFn: listTenants, enabled: isReady });
   const rolesQuery = useQuery({ queryKey: ["roles"], queryFn: () => listRoles(), enabled: isReady });
@@ -220,31 +222,24 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
               ESSK
             </Link>
 
-            <button
-              className="hidden h-10 w-10 items-center justify-center rounded-xl border bg-white text-slate-600 shadow-sm hover:bg-slate-50 hover:text-slate-950 lg:flex"
+            <IconButton
+              className="hidden shadow-sm lg:flex"
               aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
               onClick={() => setIsSidebarCollapsed((current) => !current)}
             >
               <Menu className="h-4 w-4" />
-            </button>
+            </IconButton>
 
-            <div className="relative max-w-xl flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="search"
-                placeholder="Search modules, records, or actions"
-                className="h-10 w-full rounded-xl border bg-slate-50 pl-9 pr-3 text-sm outline-none ring-primary focus:bg-white focus:ring-2"
-              />
-            </div>
+            <SearchBox className="max-w-xl flex-1" value={globalSearch} placeholder="Search modules, records, or actions" onChange={setGlobalSearch} />
 
             <div className="ml-auto flex items-center gap-3">
-              <button
-                className="relative flex h-10 w-10 items-center justify-center rounded-xl border bg-white shadow-sm hover:bg-slate-50"
+              <IconButton
+                className="relative shadow-sm"
                 aria-label="Notifications"
               >
                 <Bell className="h-4 w-4" />
                 <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-destructive" />
-              </button>
+              </IconButton>
 
               <div className="relative">
                 <button
