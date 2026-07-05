@@ -110,31 +110,54 @@ apps/web/
     components/
       atoms/
         button.tsx
-        input.tsx
-        select.tsx
-        checkbox.tsx
         icon-button.tsx
+        link-button.tsx
+        text-input.tsx
+        textarea-field.tsx
+        select-field.tsx
+        checkbox-field.tsx
+        radio-group.tsx
+        switch-field.tsx
+        label.tsx
+        helper-text.tsx
         badge.tsx
+        avatar.tsx
         spinner.tsx
+        skeleton.tsx
+        separator.tsx
+        kbd.tsx
 
       molecules/
         search-box.tsx
         filter-select.tsx
+        multi-select.tsx
         pagination.tsx
         confirmation-dialog.tsx
         confirmable-action-dialog.tsx
-        dropdown-checkbox.tsx
-        table-actions.tsx
+        modal.tsx
+        row-actions.tsx
+        alert.tsx
+        empty-state.tsx
+        loading-state.tsx
+        description-list.tsx
+        dropdown-menu.tsx
+        tabs.tsx
+        breadcrumbs.tsx
+        status-badge.tsx
 
       organisms/
         data-table.tsx
-        data-toolbar.tsx
-        modal-form.tsx
+        crud-toolbar.tsx
+        page-shell.tsx
+        section-header.tsx
+        stat-grid.tsx
+        form-panel.tsx
+        detail-panel.tsx
         app-navbar.tsx
         app-sidebar.tsx
 
       templates/
-        crud-page.tsx
+        crud-page-template.tsx
         authenticated-layout.tsx
         split-auth-layout.tsx
 

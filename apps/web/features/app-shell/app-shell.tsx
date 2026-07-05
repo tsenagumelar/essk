@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   Bell,
+  Blocks,
   ChevronDown,
   LayoutDashboard,
   LogOut,
@@ -44,7 +45,10 @@ const navGroups = [
   },
   {
     label: "Settings",
-    items: [{ href: "/health", label: "Health", icon: ShieldCheck }],
+    items: [
+      { href: "/components", label: "Components", icon: Blocks },
+      { href: "/health", label: "Health", icon: ShieldCheck },
+    ],
   },
 ];
 

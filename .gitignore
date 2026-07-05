@@ -36,3 +36,6 @@ docker-data/
 # IDE
 .idea/
 .vscode/
+
+# React Component Preview
+previewConfig.json
